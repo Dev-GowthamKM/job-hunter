@@ -180,6 +180,65 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE INDEX IF NOT EXISTS idx_transactions_month ON transactions(month);
 
+-- ---------------------------------------------------------------------------
+-- MULTI-USER. The job pool is shared; the judgement about a job is not.
+--
+-- A posting is a fact: title, company, salary, location. Those are the same for
+-- everyone and live on the jobs table. Whether a posting is a match, a stretch or
+-- out of reach depends entirely on whose profile it is screened against, so every
+-- verdict lives on user_jobs instead. One collection run serves every user.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  email         TEXT NOT NULL UNIQUE,
+  name          TEXT,
+  password_hash TEXT NOT NULL,          -- scrypt, salt stored alongside
+  password_salt TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  last_seen     TEXT,
+  status        TEXT NOT NULL DEFAULT 'active'   -- active | suspended
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token      TEXT PRIMARY KEY,          -- random, never derived from the password
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  user_agent TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+-- Per-user configuration that used to be config/candidate.json and
+-- data/resume/master.json on disk. One row per user, JSON columns so the shape
+-- stays exactly what the existing modules already read.
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id        INTEGER PRIMARY KEY REFERENCES users(id),
+  candidate_json TEXT NOT NULL,
+  master_json    TEXT,
+  money_json     TEXT,
+  updated_at     TEXT NOT NULL
+);
+
+-- One row per (user, job): everything that is an opinion rather than a fact.
+CREATE TABLE IF NOT EXISTS user_jobs (
+  user_id            INTEGER NOT NULL REFERENCES users(id),
+  job_id             INTEGER NOT NULL REFERENCES jobs(id),
+  track              TEXT,
+  tier               TEXT,
+  score              INTEGER,
+  eligibility        TEXT,
+  eligibility_reason TEXT,
+  eligibility_layer  TEXT,
+  status             TEXT NOT NULL DEFAULT 'new',
+  hidden             INTEGER NOT NULL DEFAULT 0,
+  notes              TEXT,
+  updated_at         TEXT NOT NULL,
+  PRIMARY KEY (user_id, job_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_jobs_tier ON user_jobs(user_id, tier, score DESC);
+CREATE INDEX IF NOT EXISTS idx_user_jobs_status ON user_jobs(user_id, status);
+
 CREATE TABLE IF NOT EXISTS money_goals (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT NOT NULL UNIQUE,
