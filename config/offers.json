@@ -1,0 +1,59 @@
+{
+  "_comment": "The CEO agent picks ONE offer per lead. Prices are the opening ask, not the floor.",
+  "offers": [
+    {
+      "id": "website",
+      "name": "Cinematic scroll-driven website",
+      "price": { "low": 1000, "high": 5000, "currency": "USD", "unit": "project" },
+      "delivery": "10k-websites skill: one AI-generated hero video that scrubs with scroll, then a real site below it. Ships in days, not weeks.",
+      "idealClient": "A business with revenue and a website that looks like 2012, or no website at all. Restaurants, clinics, law firms, studios, hotels, trades, boutique agencies.",
+      "buyingSignals": [
+        "no website tag on their OSM entry but a phone number listed",
+        "site is a Facebook page, Linktree, or a template with stock photos",
+        "no HTTPS, not mobile responsive, or a dead domain",
+        "they spend on ads but land traffic on something ugly"
+      ],
+      "disqualifiers": ["already has a strong custom site", "no visible revenue", "wants it for free or under $500"],
+      "proofNeeded": "One live cinematic site to link. Build your own portfolio site first, then a spec demo for the specific prospect.",
+      "leadTime": "3-7 days"
+    },
+    {
+      "id": "automation",
+      "name": "AI workflow automation",
+      "price": { "low": 500, "high": 3000, "currency": "USD", "unit": "month" },
+      "delivery": "Automate the repetitive middle of their business: lead intake and routing, quote and invoice generation, support triage, reporting, data entry between tools they already pay for.",
+      "idealClient": "5-50 person business where somebody's whole job is copying data between two systems. Agencies, clinics, logistics, e-commerce ops, property management.",
+      "buyingSignals": [
+        "hiring for a 'coordinator' or 'ops associate' whose JD is mostly manual data movement",
+        "job posts mentioning Zapier, Make, Airtable, HubSpot, spreadsheets as core duties",
+        "public complaints about slow response times",
+        "they run on 6+ SaaS tools that clearly do not talk to each other"
+      ],
+      "disqualifiers": ["no budget authority in the conversation", "wants a full-time employee, not a system", "needs on-prem or heavy compliance you cannot meet"],
+      "proofNeeded": "A 2-minute Loom of a working automation solving THEIR named problem. Build the demo before the call, not after.",
+      "leadTime": "2-4 weeks to first working system, then retainer"
+    },
+    {
+      "id": "agents",
+      "name": "Custom AI agent build",
+      "price": { "low": 3000, "high": 15000, "currency": "USD", "unit": "project" },
+      "delivery": "Bespoke agent: internal copilot over their docs and data, customer-facing assistant, research or analysis agent. Built on Claude, with tool use, evals, and a real handoff.",
+      "idealClient": "Funded startup or a mid-size company with a technical buyer who has already tried ChatGPT and hit its limits.",
+      "buyingSignals": [
+        "hiring an 'AI engineer' or 'founding engineer, AI' and struggling to fill it",
+        "posts on HN Who-is-hiring mentioning LLM, RAG, agents, Claude, or OpenAI",
+        "recently raised, shipping fast, small team",
+        "asking publicly how to get an LLM to do X reliably"
+      ],
+      "disqualifiers": ["wants you to build a ChatGPT wrapper for $500", "no data to work with", "expects AGI"],
+      "proofNeeded": "This system itself. You built a multi-agent CEO that runs your own business development. That is the portfolio piece.",
+      "leadTime": "3-8 weeks"
+    }
+  ],
+  "scoring": {
+    "_comment": "The qualifier scores 0-100. A lead under minScoreToResearch is left alone.",
+    "weights": { "fit": 30, "budgetSignal": 25, "urgency": 20, "reachability": 15, "competitionGap": 10 },
+    "minScoreToResearch": 60,
+    "minScoreToDraft": 70
+  }
+}

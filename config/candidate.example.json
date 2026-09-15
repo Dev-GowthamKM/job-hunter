@@ -1,0 +1,291 @@
+{
+  "_comment": "Copy to config/candidate.json and fill in. This file drives everything: which jobs are collected, which are eligible, and what the tailored resume may claim.",
+  "identity": {
+    "name": "Your Name",
+    "email": "you@example.com",
+    "phone": "+00 0000000000",
+    "linkedin": "your-linkedin-handle",
+    "basedIn": "City, Country",
+    "timezone": "Region/City (UTC+0)",
+    "workAuthorization": "Where you can legally work, and whether you need sponsorship. Be accurate — this decides which jobs are reachable."
+  },
+  "eligibility": {
+    "_comment": "THE master switch. 'global-only' means a job must be open to candidates anywhere, with no country restriction. 'global-plus-india' also accepts roles explicitly open to India/APAC.",
+    "mode": "global-only",
+    "_modeEvidence": "Set to global-only on the owner's instruction: he wants roles he can do from anywhere, full stop. The cost is real - the first measurement of this setting found 1 eligible job in 12,192. The answer is not to loosen the filter but to search far more thoroughly, which is why the sources now paginate deeply instead of taking the first page. Set to global-plus-india to also see India-tied roles.",
+    "unclearVerdict": "reject"
+  },
+  "_tracks": "A job is classified into exactly one track before anything else happens. The track decides the salary band, the seniority rule, which resume facts get selected, and how the dashboard groups it. Turn a track off with enabled:false and it stops being collected entirely.",
+  "tracks": {
+    "dev": {
+      "label": "Full-stack / Software",
+      "enabled": true,
+      "salaryMin": 50000,
+      "salaryMax": 150000,
+      "titles": [
+        "full stack",
+        "full-stack",
+        "fullstack",
+        "software engineer",
+        "software developer",
+        "web developer",
+        "frontend",
+        "front end",
+        "front-end",
+        "backend",
+        "back end",
+        "back-end",
+        "react developer",
+        "react engineer",
+        "node developer",
+        "javascript engineer",
+        "javascript developer",
+        "web engineer",
+        "application developer",
+        "product engineer"
+      ]
+    },
+    "ai": {
+      "label": "AI / ML Engineering",
+      "enabled": true,
+      "salaryMin": 50000,
+      "salaryMax": 150000,
+      "titles": [
+        "ai engineer",
+        "ai developer",
+        "ml engineer",
+        "machine learning engineer",
+        "applied ai",
+        "applied scientist",
+        "prompt engineer",
+        "agent engineer",
+        "ai automation",
+        "llm engineer",
+        "llm developer",
+        "generative ai",
+        "ai solutions",
+        "conversational ai",
+        "nlp engineer",
+        "forward deployed engineer",
+        "ai integration"
+      ]
+    },
+    "marketing": {
+      "label": "Media Buying / Paid Ads",
+      "enabled": true,
+      "salaryMin": 25000,
+      "salaryMax": 150000,
+      "_salaryMin": "Lower floor than the dev tracks on purpose. Global-remote paid-media roles routinely pay below $50k, and a $50k floor would reject the entire track before he saw any of it.",
+      "titles": [
+        "media buyer",
+        "media buying",
+        "paid media",
+        "paid social",
+        "paid ads",
+        "performance marketing",
+        "facebook ads",
+        "meta ads",
+        "google ads",
+        "ppc",
+        "ads manager",
+        "advertising manager",
+        "growth marketer",
+        "growth marketing",
+        "demand generation",
+        "user acquisition",
+        "media analyst",
+        "marketing analyst",
+        "campaign manager",
+        "digital marketing",
+        "performance media",
+        "acquisition manager"
+      ]
+    },
+    "game": {
+      "label": "Game Development",
+      "enabled": true,
+      "salaryMin": 25000,
+      "salaryMax": 150000,
+      "entryOnly": true,
+      "_entryOnly": "He described himself as a beginner here. Anything above junior is filtered out, because a mid-level game role would waste a researched dossier and a recorded Loom.",
+      "titles": [
+        "game developer",
+        "game programmer",
+        "gameplay programmer",
+        "unity developer",
+        "unity engineer",
+        "unreal developer",
+        "unreal engineer",
+        "game engineer"
+      ]
+    }
+  },
+  "_excludeTitles": "Hard exclusions, checked BEFORE track matching. These are the shapes of job that filled v1's results and that he has no interest in or background for. A title hitting any of these is dropped even if it also matches a track.",
+  "excludeTitles": [
+    "linux",
+    "kernel",
+    "ubuntu",
+    "debian",
+    "packaging",
+    "bios",
+    "bootloader",
+    "firmware",
+    "device driver",
+    "drivers",
+    "compiler",
+    "gcc",
+    "llvm",
+    "toolchain",
+    "silicon",
+    "embedded",
+    "sustaining engineering",
+    "l3 support",
+    "field engineer",
+    "site reliability",
+    "sre",
+    "kubernetes",
+    "k8s",
+    "openstack",
+    "ceph",
+    "hypervisor",
+    "rtos",
+    "fpga",
+    "verification engineer",
+    "container image",
+    "observability",
+    "distributed systems",
+    "systems engineer",
+    "platform engineer",
+    "sales",
+    "account executive",
+    "recruiter",
+    "talent acquisition",
+    "customer success",
+    "support agent",
+    "technical support",
+    "accountant",
+    "bookkeeper",
+    "hardware",
+    "mechanical",
+    "electrical technician",
+    "civil",
+    "nurse",
+    "driver",
+    "warehouse",
+    "security guard",
+    "teacher"
+  ],
+  "employment": {
+    "types": [
+      "FullTime"
+    ],
+    "_comment": "Full-time only, as instructed. Contract, part-time, internship and freelance are rejected at layer 1."
+  },
+  "_excludeCompanies": "Whole employers whose entire output is the wrong kind of work. Canonical is here because you said plainly that you do not know Ubuntu and have no interest in it - their board is Linux systems engineering end to end, and it was filling your results in v1. Delete the entry to let them back in; nothing else depends on it.",
+  "excludeCompanies": [
+    "Canonical"
+  ],
+  "seniority": {
+    "yearsExperience": 1,
+    "graduated": "2025-01",
+    "rejectTitlePatterns": [
+      "\\bsenior\\b",
+      "\\bsr\\.?\\b",
+      "\\blead\\b",
+      "staff",
+      "principal",
+      "distinguished",
+      "fellow",
+      "director",
+      "\\bvp\\b",
+      "vice president",
+      "head of",
+      "chief",
+      "manager of engineering",
+      "engineering manager",
+      "architect"
+    ],
+    "_rejectTitlePatterns": "Note that 'ads manager' and 'campaign manager' are legitimate individual-contributor marketing titles, so bare 'manager' is NOT rejected - only management-of-people titles are.",
+    "rejectYearsAbove": 5
+  },
+  "compensation": {
+    "currency": "USD",
+    "period": "year",
+    "keepUnknownSalary": true,
+    "_comment": "Per-track floors live under tracks. These are the fallbacks for a job whose track could not be resolved, plus the FX table used to compare a non-USD posting against a USD band.",
+    "min": 50000,
+    "max": 150000,
+    "fxToUSD": {
+      "_comment": "Your rates, not fetched ones. A filter that silently re-prices itself is a filter you cannot audit.",
+      "asOf": "2026-09-08",
+      "INR": 0.0115,
+      "EUR": 1.08,
+      "GBP": 1.27,
+      "CAD": 0.73,
+      "SGD": 0.75,
+      "AUD": 0.66
+    }
+  },
+  "skills": {
+    "_comment": "Used for fit scoring and the ATS keyword check. The resume-tailor may only emphasise what is here - it may never claim a skill that is not. Grows when a resume is uploaded or the gap interview is answered.",
+    "strong": [
+      "javascript",
+      "react",
+      "node.js",
+      "html",
+      "css",
+      "sql",
+      "mysql",
+      "prompt engineering"
+    ],
+    "working": [
+      "python",
+      "machine learning",
+      "artificial intelligence",
+      "rest api",
+      "git",
+      "mongodb"
+    ],
+    "learning": [
+      "typescript",
+      "next.js",
+      "llm",
+      "rag",
+      "agents",
+      "docker",
+      "aws"
+    ],
+    "unproven": [
+      "media buying",
+      "facebook ads",
+      "google ads",
+      "roas",
+      "seo",
+      "unity",
+      "unreal"
+    ],
+    "_unproven": "Claimed by the owner but NOT evidenced by any resume on disk. The tailorer must not assert these until the gap interview supplies real detail - see data/resume/master.json."
+  },
+  "scoring": {
+    "_comment": "Applied only to jobs that already PASSED the eligibility gate. Eligibility is a gate, not a weight - a US-only job cannot be scored into contention.",
+    "weights": {
+      "roleFit": 30,
+      "companyTier": 20,
+      "salaryFit": 20,
+      "seniorityFit": 20,
+      "recency": 10
+    },
+    "minScoreToShortlist": 60,
+    "minScoreToResearch": 65,
+    "maxResearchPerRun": 5,
+    "maxPacketsPerDay": 3
+  },
+  "dealbreakers": [
+    "unpaid",
+    "commission only",
+    "equity only",
+    "revenue share only",
+    "security clearance",
+    "must relocate"
+  ]
+}

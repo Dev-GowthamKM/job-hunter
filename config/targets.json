@@ -1,0 +1,398 @@
+{
+  "_comment": "Scout configuration. Sources are free and keyless unless noted. dailySendCap is enforced in code.",
+  "dailySendCap": 20,
+  "maxLeadsPerSource": 40,
+  "sources": {
+    "hn": {
+      "enabled": true,
+      "note": "Algolia API. The monthly 'Freelancer? Seeking freelancer?' and 'Who is hiring' threads."
+    },
+    "remoteok": {
+      "enabled": true,
+      "note": "ToS requires a dofollow link back to remoteok.com wherever listings are shown."
+    },
+    "wwr": {
+      "enabled": true,
+      "note": "WeWorkRemotely category RSS."
+    },
+    "osm": {
+      "enabled": true,
+      "note": "PRIMARY SOURCE. Businesses with a phone and no website are the buyers for the offer the owner can deliver today. One city per run from the 20-city rotation."
+    },
+    "reddit": {
+      "enabled": false,
+      "note": "DISABLED: Reddit now 403s public JSON/RSS. Needs a free OAuth app (REDDIT_CLIENT_ID/SECRET in .env) before enabling."
+    }
+  },
+  "keywords": {
+    "_comment": "Matched against titles and bodies from the feed sources to find your three offers.",
+    "agents": [
+      "ai agent",
+      "llm",
+      "claude",
+      "openai",
+      "gpt",
+      "rag",
+      "langchain",
+      "vector database",
+      "prompt engineer",
+      "fine-tun",
+      "chatbot",
+      "copilot",
+      "mcp"
+    ],
+    "automation": [
+      "automation",
+      "automate",
+      "zapier",
+      "make.com",
+      "n8n",
+      "airtable",
+      "workflow",
+      "integration",
+      "scraping",
+      "data entry",
+      "ops engineer",
+      "internal tool",
+      "no-code"
+    ],
+    "website": [
+      "landing page",
+      "webflow",
+      "website redesign",
+      "marketing site",
+      "web design",
+      "frontend freelance",
+      "wordpress",
+      "shopify theme",
+      "portfolio site"
+    ],
+    "contractSignals": [
+      "freelance",
+      "contract",
+      "contractor",
+      "part-time",
+      "consultant",
+      "project-based",
+      "seeking freelancer",
+      "hourly",
+      "fractional"
+    ],
+    "negative": [
+      "unpaid",
+      "equity only",
+      "no pay",
+      "volunteer",
+      "intern",
+      "revenue share only",
+      "commission only"
+    ]
+  },
+  "osm": {
+    "_comment": "One city per scout run, rotated in order. Worldwide coverage without ever querying the whole planet at once, which Overpass will not do. Add or remove freely.",
+    "endpoints": [
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter"
+    ],
+    "businessTypes": {
+      "_comment": "OSM key -> values. Each trade belongs to exactly one key; grouping keeps Overpass fast.",
+      "amenity": [
+        "restaurant",
+        "cafe",
+        "bar",
+        "pub",
+        "fast_food",
+        "dentist",
+        "doctors",
+        "veterinary",
+        "clinic",
+        "driving_school"
+      ],
+      "shop": [
+        "hairdresser",
+        "beauty",
+        "bakery",
+        "florist",
+        "jewelry",
+        "furniture",
+        "car_repair",
+        "optician",
+        "butcher",
+        "tattoo",
+        "photo"
+      ],
+      "office": [
+        "lawyer",
+        "estate_agent",
+        "travel_agent",
+        "accountant",
+        "architect",
+        "insurance",
+        "financial_advisor"
+      ],
+      "craft": [
+        "photographer",
+        "carpenter",
+        "plumber",
+        "electrician",
+        "painter",
+        "hvac"
+      ],
+      "leisure": [
+        "fitness_centre",
+        "dance",
+        "sports_centre"
+      ],
+      "healthcare": [
+        "physiotherapist",
+        "psychotherapist",
+        "chiropractor"
+      ]
+    },
+    "maxPerCity": 25,
+    "cities": [
+      {
+        "id": "bengaluru",
+        "name": "Bengaluru, India",
+        "bbox": [
+          12.96,
+          77.59,
+          12.99,
+          77.63
+        ],
+        "tier": 1,
+        "note": "Home city. Highest close rate available: same timezone, calls and in-person meetings possible."
+      },
+      {
+        "id": "new-york",
+        "name": "New York, USA",
+        "bbox": [
+          40.72,
+          -74.01,
+          40.78,
+          -73.95
+        ],
+        "tier": 1
+      },
+      {
+        "id": "london",
+        "name": "London, UK",
+        "bbox": [
+          51.5,
+          -0.15,
+          51.54,
+          -0.08
+        ],
+        "tier": 1
+      },
+      {
+        "id": "san-francisco",
+        "name": "San Francisco, USA",
+        "bbox": [
+          37.76,
+          -122.44,
+          37.8,
+          -122.39
+        ],
+        "tier": 1
+      },
+      {
+        "id": "los-angeles",
+        "name": "Los Angeles, USA",
+        "bbox": [
+          34.04,
+          -118.29,
+          34.08,
+          -118.24
+        ],
+        "tier": 1
+      },
+      {
+        "id": "toronto",
+        "name": "Toronto, Canada",
+        "bbox": [
+          43.64,
+          -79.41,
+          43.68,
+          -79.37
+        ],
+        "tier": 1
+      },
+      {
+        "id": "sydney",
+        "name": "Sydney, Australia",
+        "bbox": [
+          -33.88,
+          151.19,
+          -33.85,
+          151.22
+        ],
+        "tier": 1
+      },
+      {
+        "id": "dubai",
+        "name": "Dubai, UAE",
+        "bbox": [
+          25.19,
+          55.26,
+          25.23,
+          55.3
+        ],
+        "tier": 1
+      },
+      {
+        "id": "singapore",
+        "name": "Singapore",
+        "bbox": [
+          1.28,
+          103.83,
+          1.31,
+          103.86
+        ],
+        "tier": 1
+      },
+      {
+        "id": "zurich",
+        "name": "Zurich, Switzerland",
+        "bbox": [
+          47.36,
+          8.52,
+          47.39,
+          8.56
+        ],
+        "tier": 1
+      },
+      {
+        "id": "amsterdam",
+        "name": "Amsterdam, NL",
+        "bbox": [
+          52.36,
+          4.88,
+          52.38,
+          4.91
+        ],
+        "tier": 1
+      },
+      {
+        "id": "berlin",
+        "name": "Berlin, Germany",
+        "bbox": [
+          52.5,
+          13.38,
+          52.53,
+          13.42
+        ],
+        "tier": 2
+      },
+      {
+        "id": "dublin",
+        "name": "Dublin, Ireland",
+        "bbox": [
+          53.33,
+          -6.28,
+          53.36,
+          -6.24
+        ],
+        "tier": 2
+      },
+      {
+        "id": "chicago",
+        "name": "Chicago, USA",
+        "bbox": [
+          41.88,
+          -87.64,
+          41.91,
+          -87.61
+        ],
+        "tier": 2
+      },
+      {
+        "id": "austin",
+        "name": "Austin, USA",
+        "bbox": [
+          30.25,
+          -97.75,
+          30.28,
+          -97.72
+        ],
+        "tier": 2
+      },
+      {
+        "id": "miami",
+        "name": "Miami, USA",
+        "bbox": [
+          25.76,
+          -80.2,
+          25.79,
+          -80.18
+        ],
+        "tier": 2
+      },
+      {
+        "id": "vancouver",
+        "name": "Vancouver, Canada",
+        "bbox": [
+          49.27,
+          -123.13,
+          49.29,
+          -123.1
+        ],
+        "tier": 2
+      },
+      {
+        "id": "melbourne",
+        "name": "Melbourne, Australia",
+        "bbox": [
+          -37.82,
+          144.95,
+          -37.8,
+          144.98
+        ],
+        "tier": 2
+      },
+      {
+        "id": "manchester",
+        "name": "Manchester, UK",
+        "bbox": [
+          53.47,
+          -2.25,
+          53.49,
+          -2.22
+        ],
+        "tier": 2
+      },
+      {
+        "id": "mumbai",
+        "name": "Mumbai, India",
+        "bbox": [
+          19.05,
+          72.82,
+          19.08,
+          72.86
+        ],
+        "tier": 3
+      }
+    ]
+  },
+  "autopilot": {
+    "_comment": "Full authority mode. When enabled the agents approve and send their own messages, with no tap from Gowtham. Every rule below is a brake that still applies.",
+    "enabled": false,
+    "channels": [
+      "email"
+    ],
+    "_channels_note": "email only. A Telegram bot cannot message someone who has not messaged it first, and automating a personal WhatsApp number gets it banned.",
+    "minScore": 75,
+    "requireAngle": true,
+    "_requireAngle_note": "never send a lead the researcher did not find a verifiable angle for",
+    "holdFirstN": 3,
+    "_holdFirstN_note": "the first N messages ever sent still need manual approval, so the quality is seen before anything runs unattended",
+    "dailyCap": 10,
+    "quietHours": [
+      21,
+      9
+    ],
+    "_quietHours_note": "local IST hours when nothing sends. A cold email at 3am reads as a bot.",
+    "maxPerCompany": 1
+  }
+}

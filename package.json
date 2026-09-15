@@ -1,0 +1,34 @@
+{
+  "name": "job-hunter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-agent job search: aggregates 80+ job boards, screens postings against structured eligibility rules, and generates complete application packets. Zero runtime dependencies.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "scout": "node --no-warnings=ExperimentalWarning src/scout.mjs",
+    "report": "node --no-warnings=ExperimentalWarning src/report.mjs",
+    "bridge": "node --no-warnings=ExperimentalWarning src/telegram/bridge.mjs",
+    "outbox": "node --no-warnings=ExperimentalWarning src/telegram/outbox.mjs",
+    "init": "node --no-warnings=ExperimentalWarning src/db.mjs --init",
+    "hunt": "node --no-warnings=ExperimentalWarning src/jobs/hunt.mjs",
+    "hunt:verify": "node --no-warnings=ExperimentalWarning src/jobs/hunt.mjs --verify-companies",
+    "jobs": "node --no-warnings=ExperimentalWarning src/jobs/report.mjs",
+    "jobs:near": "node --no-warnings=ExperimentalWarning src/jobs/report.mjs --near-miss",
+    "score": "node --no-warnings=ExperimentalWarning src/jobs/score.mjs",
+    "apply": "node --no-warnings=ExperimentalWarning src/jobs/apply.mjs",
+    "money": "node --no-warnings=ExperimentalWarning src/money/report.mjs",
+    "ledger": "node --no-warnings=ExperimentalWarning src/money/ledger.mjs",
+    "offer": "node --no-warnings=ExperimentalWarning src/money/offer.mjs",
+    "web": "node --no-warnings=ExperimentalWarning src/web/server.mjs",
+    "status": "node --no-warnings=ExperimentalWarning src/status.mjs",
+    "rescreen": "node --no-warnings=ExperimentalWarning src/jobs/hunt.mjs --rescreen",
+    "resume": "node --no-warnings=ExperimentalWarning src/jobs/resume.mjs",
+    "ingest": "node --no-warnings=ExperimentalWarning src/jobs/ingest.mjs",
+    "autopilot": "node --no-warnings=ExperimentalWarning src/autopilot.mjs",
+    "dashboard": "node --no-warnings=ExperimentalWarning src/dashboard/server.mjs",
+    "packets": "node --no-warnings=ExperimentalWarning src/jobs/apply.mjs batch --tier=all --limit=60"
+  }
+}

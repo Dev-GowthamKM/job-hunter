@@ -1,0 +1,29 @@
+# ── Personal data. None of this belongs in a public repository. ──────────────
+# The pipeline database holds scraped postings, client leads and the owner's budget.
+data/pipeline.db
+data/pipeline.db-*
+data/profile.md
+
+# Application packets: 60+ tailored resumes carrying a real phone number, email and address.
+data/applications/
+
+# The resume fact bank, and every resume ever uploaded to it.
+data/resume/
+
+# Live config: salary expectations, work-authorisation status, budget, tax settings.
+# The .example.json files next to these are the versions that ship.
+config/candidate.json
+config/money.json
+
+# Drafted outreach, addressed to real people.
+outbox/*.md
+!outbox/.gitkeep
+
+# Personal portfolio page with contact details.
+site/
+
+# ── Ordinary ignores ────────────────────────────────────────────────────────
+node_modules/
+.env
+.DS_Store
+*.log

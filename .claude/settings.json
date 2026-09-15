@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node src/scout.mjs:*)",
+      "Bash(node src/report.mjs:*)",
+      "Bash(node src/draft.mjs:*)",
+      "Bash(node --no-warnings=ExperimentalWarning src/scout.mjs:*)",
+      "Bash(node --no-warnings=ExperimentalWarning src/report.mjs:*)",
+      "Bash(node --no-warnings=ExperimentalWarning src/draft.mjs:*)",
+      "Bash(npm run scout:*)",
+      "Bash(npm run report:*)",
+      "Read(//Users/sachin2000/Downloads/10k-websites/**)",
+      "Bash(node src/jobs/hunt.mjs:*)",
+      "Bash(node src/jobs/report.mjs:*)",
+      "Bash(node src/jobs/score.mjs:*)",
+      "Bash(node src/jobs/verdict.mjs:*)",
+      "Bash(node src/jobs/apply.mjs:*)",
+      "Bash(node src/jobs/pdftext.mjs:*)",
+      "Bash(node src/jobs/render.mjs:*)",
+      "Bash(node src/jobs/ats.mjs:*)",
+      "Bash(node src/money/report.mjs:*)",
+      "Bash(node src/money/ledger.mjs:*)",
+      "Bash(node src/money/offer.mjs:*)",
+      "Bash(node --no-warnings=ExperimentalWarning src/jobs/:*)",
+      "Bash(node --no-warnings=ExperimentalWarning src/money/:*)",
+      "Bash(npm run hunt:*)",
+      "Bash(npm run jobs:*)",
+      "Bash(npm run score:*)",
+      "Bash(npm run money:*)",
+      "Bash(npm run apply:*)",
+      "Bash(npm run ledger:*)",
+      "Bash(npm run offer:*)"
+    ],
+    "deny": [
+      "Bash(curl:*api.telegram.org*)",
+      "Bash(sqlite3:*UPDATE*)",
+      "Bash(sqlite3:*INSERT*)",
+      "Bash(sqlite3:*DELETE*)",
+      "Bash(node src/jobs/apply.mjs approve:*)",
+      "Bash(npm run apply approve:*)"
+    ]
+  }
+}

@@ -1,0 +1,555 @@
+#!/usr/bin/env node
+// The dashboard. Everything /hunt and /money do from a terminal, done from a browser instead.
+//
+//   npm run web        then open http://127.0.0.1:4321
+//
+// Bound to 127.0.0.1 on purpose. This reads the owner's pipeline, his salary expectations and his
+// budget; it is not something to expose on a network, and there is no auth because there is no
+// listener anyone else can reach.
+//
+// THE GATE IS STILL THE GATE. /api/approve records the owner's decision and nothing else. There is
+// no route here that submits an application, uploads a file, or sends a message. A button in a
+// browser is the owner acting, exactly like typing the command; it is not an agent acting.
+import { createServer } from 'node:http';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, extname, normalize } from 'node:path';
+import { spawn } from 'node:child_process';
+import { ROOT, db, now, logEvent, setJobHidden } from '../db.mjs';
+import { fmt } from '../jobs/eligibility.mjs';
+import { enabledTracks } from '../jobs/tracks.mjs';
+
+const PORT = Number(process.env.PORT || 4321);
+const HOST = '127.0.0.1';
+const D = db();
+
+const cfg = (f) => JSON.parse(readFileSync(join(ROOT, 'config', f), 'utf8'));
+const json = (res, body, code = 200) => {
+  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+  res.end(JSON.stringify(body));
+};
+
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript',
+  '.json': 'application/json', '.pdf': 'application/pdf', '.md': 'text/plain; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
+
+/**
+ * Pay, shown in USD so two postings are comparable at a glance.
+ * fmt() prints a dollar sign, so handing it 4,408,400 INR produced "$4408k INR" - a number that is
+ * wrong twice. Non-USD figures are converted with the same rates the filter uses, and the original
+ * is kept alongside so nothing is hidden.
+ */
+const pay = (r) => {
+  if (!r.salary_min) return null;
+  const usdMin = r.usd_min ?? r.salary_min;
+  const usdMax = r.usd_max ?? r.salary_max ?? r.salary_min;
+  const main = usdMin === usdMax ? fmt(usdMin) : `${fmt(usdMin)}–${fmt(usdMax)}`;
+  // usd_min / usd_max are ALREADY annualised by the SQL, so appending "/month" to them said
+  // $24k-$30k per month for a job paying $2,000 a month. The period belongs to the native figure.
+  const nativeNeeded = (r.salary_currency && r.salary_currency !== 'USD') || (r.salary_period && r.salary_period !== 'year');
+  const per = r.salary_period === 'month' ? '/mo' : r.salary_period === 'hour' ? '/hr' : '';
+  const native = nativeNeeded
+    ? ` — ${Math.round(r.salary_min).toLocaleString('en-IN')}–${Math.round(r.salary_max || r.salary_min).toLocaleString('en-IN')} ${r.salary_currency || 'USD'}${per}`
+    : '';
+  return `${main}/yr${native}`;
+};
+
+// ---------------------------------------------------------------------------
+// Reads
+// ---------------------------------------------------------------------------
+
+/** The client-acquisition arm. The job dashboard had no idea leads existed, so the whole /ceo side
+ *  was invisible here and lived in a second server on another port. One dashboard, three arms. */
+function clients() {
+  const D = db();
+  const all = (sql, ...a) => { try { return D.prepare(sql).all(...a); } catch { return []; } };
+  const one = (sql, ...a) => { try { return D.prepare(sql).get(...a); } catch { return null; } };
+
+  const stages = Object.fromEntries(all('SELECT status, COUNT(*) n FROM leads GROUP BY status').map((r) => [r.status, r.n]));
+  const ev = Object.fromEntries(all('SELECT kind, COUNT(*) n FROM events GROUP BY kind').map((r) => [r.kind, r.n]));
+
+  // A stage count says where leads are NOW; it reads as "0 researched" the moment they move on.
+  // The funnel wants how many have EVER reached each stage, which is what the event log records.
+  const found = Object.values(stages).reduce((a, b) => a + b, 0);
+  const funnel = [
+    { key: 'found',      n: found,                                     note: 'businesses the scout pulled in' },
+    { key: 'qualified',  n: (ev.qualified ?? 0),                       note: 'scored worth a closer look' },
+    { key: 'researched', n: (ev.researched ?? 0),                      note: 'investigated, angle found' },
+    { key: 'drafted',    n: (ev.drafted ?? 0),                         note: 'message written' },
+    { key: 'sent',       n: (stages.sent ?? 0) + (stages.replied ?? 0) + (stages.won ?? 0), note: 'you approved and sent' },
+    { key: 'replied',    n: (stages.replied ?? 0) + (stages.won ?? 0), note: 'they wrote back' },
+  ];
+
+  return {
+    funnel,
+    rejected: stages.rejected ?? 0,
+    bySource: all('SELECT source, COUNT(*) n FROM leads GROUP BY source ORDER BY n DESC'),
+    waiting: all(`SELECT m.id, m.body, m.subject, m.channel, m.status,
+                         l.id AS lead_id, l.company, l.contact, l.score, l.angle, l.location, l.offer
+                  FROM messages m LEFT JOIN leads l ON l.id = m.lead_id
+                  WHERE m.status IN ('draft','pending','approved') ORDER BY m.id`),
+    live: all(`SELECT id, company, title, score, status, offer, angle, contact, source
+               FROM leads WHERE status IN ('qualified','researched','drafted','sent','replied')
+               ORDER BY CASE status WHEN 'replied' THEN 0 WHEN 'sent' THEN 1 WHEN 'drafted' THEN 2
+                        WHEN 'researched' THEN 3 ELSE 4 END, score DESC`),
+    killed: all(`SELECT company, title, substr(notes,1,160) AS notes FROM leads
+                 WHERE status='rejected' AND notes IS NOT NULL ORDER BY id DESC LIMIT 14`),
+    events: all("SELECT at, kind, lead_id FROM events WHERE kind NOT LIKE 'hunt%' ORDER BY id DESC LIMIT 18"),
+    autopilot: (() => { try { return JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8')).autopilot ?? { enabled: false }; } catch { return { enabled: false }; } })(),
+    paused: one("SELECT value FROM state WHERE key='paused'")?.value === '1',
+    inbox: one("SELECT COUNT(*) n FROM messages WHERE direction='in' AND status='received'")?.n ?? 0,
+  };
+}
+
+function overview() {
+  const jobs = {
+    total: D.prepare('SELECT COUNT(*) n FROM jobs').get().n,
+    byEligibility: D.prepare('SELECT eligibility, COUNT(*) n FROM jobs GROUP BY eligibility').all(),
+    byStatus: D.prepare('SELECT status, COUNT(*) n FROM jobs GROUP BY status').all(),
+    bySource: D.prepare('SELECT source, COUNT(*) n FROM jobs GROUP BY source ORDER BY n DESC').all(),
+  };
+  const lastRun = D.prepare("SELECT at, detail FROM events WHERE kind='hunt_run' ORDER BY id DESC LIMIT 1").get();
+  const companies = cfg('companies.json').companies.length;
+  const cand = cfg('candidate.json');
+
+  const month = new Date().toISOString().slice(0, 7);
+  const b = D.prepare('SELECT * FROM budget_months WHERE month = ?').get(month);
+  const spent = b ? D.prepare('SELECT COALESCE(SUM(amount),0) s FROM transactions WHERE month=?').get(month).s : 0;
+
+  return {
+    jobs, companies, lastRun: lastRun ? { at: lastRun.at, detail: JSON.parse(lastRun.detail || '{}') } : null,
+    mode: cand.eligibility.mode,
+    band: { min: cand.compensation.min, max: cand.compensation.max },
+    money: b ? { month, allocated: b.allocated, spent, left: b.allocated - spent, currency: b.currency } : { month, allocated: null },
+    pendingApproval: D.prepare("SELECT COUNT(*) n FROM applications WHERE status='awaiting_approval'").get().n,
+  };
+}
+
+function jobList(q) {
+  const where = ['1=1'];
+  const args = [];
+
+  if (q.eligibility) { where.push('eligibility = ?'); args.push(q.eligibility); }
+  if (q.tier) { where.push(`tier IN (${q.tier.split(',').map(() => '?').join(',')})`); args.push(...q.tier.split(',')); }
+  if (q.status) { where.push('status = ?'); args.push(q.status); }
+  if (q.company) { where.push('company LIKE ?'); args.push(`%${q.company}%`); }
+  if (q.track) { where.push(`track IN (${q.track.split(',').map(() => '?').join(',')})`); args.push(...q.track.split(',')); }
+  where.push(q.hidden === '1' ? 'hidden = 1' : 'hidden = 0');
+
+  // Salary is compared in USD, so a non-USD posting has to be converted with the same rates the
+  // filter uses. Doing it in SQL keeps paging honest - filtering after LIMIT would silently drop rows.
+  const fx = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8')).compensation.fxToUSD || {};
+  const rateCase = `CASE salary_currency ${Object.entries(fx).filter(([k]) => !k.startsWith('_') && k !== 'asOf')
+    .map(([k, v]) => `WHEN '${k}' THEN ${v}`).join(' ')} ELSE 1 END`;
+  const perCase = `CASE salary_period WHEN 'hour' THEN 2080 WHEN 'month' THEN 12 ELSE 1 END`;
+  const usdMin = `(salary_min * ${rateCase} * ${perCase})`;
+  const usdMax = `(COALESCE(salary_max, salary_min) * ${rateCase} * ${perCase})`;
+
+  const hasMin = q.salaryMin && Number(q.salaryMin) > 0;
+  const hasMax = q.salaryMax && Number(q.salaryMax) > 0;
+  if (hasMin || hasMax) {
+    const clauses = [];
+    if (hasMin) clauses.push(`${usdMax} >= ?`);
+    if (hasMax) clauses.push(`${usdMin} <= ?`);
+    const range = `(salary_min IS NOT NULL AND ${clauses.join(' AND ')})`;
+    // A posting with no published pay is not the same as one that pays too little, so it gets its
+    // own toggle instead of being quietly ranked to the bottom.
+    where.push(q.unknownSalary === '0' ? range : `(${range} OR salary_min IS NULL)`);
+    if (hasMin) args.push(Number(q.salaryMin));
+    if (hasMax) args.push(Number(q.salaryMax));
+  } else if (q.unknownSalary === '0') {
+    where.push('salary_min IS NOT NULL');
+  }
+
+  const order = q.sort === 'pay' ? `${usdMax} DESC NULLS LAST, score DESC`
+    : q.sort === 'new' ? 'COALESCE(posted_at, discovered_at) DESC'
+    : 'COALESCE(score,-1) DESC, id DESC';
+
+  const limit = Math.min(200, Number(q.limit) || 60);
+  const offset = Math.max(0, Number(q.offset) || 0);
+  const w = where.join(' AND ');
+
+  const total = D.prepare(`SELECT COUNT(*) n FROM jobs WHERE ${w}`).get(...args).n;
+  const rows = D.prepare(`
+    SELECT id, company, company_tier, title, url, apply_url, location_raw, salary_min, salary_max,
+           salary_currency, salary_period, score, status, eligibility, eligibility_reason,
+           posted_at, source, track, tier, ${usdMin} AS usd_min, ${usdMax} AS usd_max,
+           (SELECT a.id FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS app_id,
+           (SELECT a.ats_coverage FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS ats,
+           (SELECT a.approved_at FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS approved_at
+    FROM jobs WHERE ${w} ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}`).all(...args);
+
+  return { total, offset, limit, rows: rows.map((r) => ({ ...r, payLabel: pay(r) })) };
+}
+
+/** How many jobs sit in each tier, so the UI can label the chips honestly. */
+function tierSummary() {
+  const rows = D.prepare('SELECT tier, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY tier').all();
+  const n = Object.fromEntries(rows.map((r) => [r.tier, r.n]));
+  return [
+    { key: 'match', label: 'Apply to these', n: n.match || 0,
+      why: 'Work from anywhere, right level, pay in your band.' },
+    { key: 'stretch', label: 'Stretch', n: n.stretch || 0,
+      why: 'Work from anywhere, but above your level or the pay is unclear. Your call.' },
+    { key: 'regional', label: 'Tied to a country', n: n.regional || 0,
+      why: 'The right kind of job, but it needs you in a specific place.' },
+    { key: 'no', label: 'Not for you', n: n.no || 0,
+      why: 'Not full-time, not your field, or a dealbreaker.' },
+  ];
+}
+
+function trackSummary() {
+  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const counts = Object.fromEntries(
+    D.prepare("SELECT track, COUNT(*) n FROM jobs WHERE eligibility='yes' AND hidden=0 GROUP BY track").all()
+      .map((r) => [r.track, r.n]));
+  const all = Object.fromEntries(
+    D.prepare('SELECT track, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY track').all().map((r) => [r.track, r.n]));
+  return enabledTracks(cand).map((t) => ({
+    key: t.key, label: t.label, salaryMin: t.salaryMin, salaryMax: t.salaryMax,
+    eligible: counts[t.key] || 0, total: all[t.key] || 0,
+  }));
+}
+
+/** One-click searches into the sites that cannot be scraped, pre-filtered to his tracks. */
+function deepLinks() {
+  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const out = [];
+  for (const t of enabledTracks(cand)) {
+    const q = encodeURIComponent(t.titles[0]);
+    out.push({
+      track: t.key, label: t.label,
+      links: [
+        { site: 'LinkedIn', url: `https://www.linkedin.com/jobs/search/?keywords=${q}&f_WT=2&f_JT=F&sortBy=DD` },
+        { site: 'Naukri', url: `https://www.naukri.com/${t.titles[0].replace(/\s+/g, '-')}-jobs?wfhType=0` },
+        { site: 'Indeed', url: `https://www.indeed.com/jobs?q=${q}&sc=0kf%3Aattr(DSQF7)%3B&fromage=7` },
+        { site: 'Wellfound', url: `https://wellfound.com/role/r/${t.titles[0].replace(/\s+/g, '-')}` },
+      ],
+    });
+  }
+  return out;
+}
+
+function jobDetail(id) {
+  const job = D.prepare('SELECT * FROM jobs WHERE id = ?').get(Number(id));
+  if (!job) return null;
+  const app = D.prepare('SELECT * FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(job.id);
+  const dir = join(ROOT, 'data', 'applications', String(job.id));
+  const file = (f) => (existsSync(join(dir, f)) ? f : null);
+  const resumePdf = app?.resume_path ? app.resume_path.split('/').pop() : null;
+  return {
+    job: { ...job, payLabel: pay(job) },
+    application: app || null,
+    packet: app ? {
+      research: file('research.md'),
+      resumePdf: resumePdf && existsSync(join(dir, resumePdf)) ? resumePdf : null,
+      resumeJson: file('resume.json'),
+      loomScript: file('loom/script.md'),
+      loomSlides: file('loom/slides.html'),
+      loomChecklist: file('loom/checklist.md'),
+      jobText: file('job.txt'),
+    } : null,
+  };
+}
+
+/** Same grouping the terminal --near-miss uses, so both views tell the same story. */
+function nearMiss() {
+  const rows = D.prepare(`SELECT id, company, title, eligibility, eligibility_reason
+    FROM jobs WHERE eligibility IN ('no','unclear')`).all()
+    .sort((a, b) => String(a.company).localeCompare(String(b.company)) || a.id - b.id);
+  const bucket = (reason = '') =>
+    /open to India/i.test(reason) ? 'Open to India, not work-from-anywhere'
+    : /geographically restricted|restricted to a region/i.test(reason) ? 'Geography'
+    : /never states a location/i.test(reason) ? 'Location unstated'
+    : /pay .* misses|no salary published/i.test(reason) ? 'Salary band'
+    : /too senior|wants \d+\+ years/i.test(reason) ? 'Seniority'
+    : /not full-time|contract|part-time|internship|freelance/i.test(reason) ? 'Not full-time'
+    : /outside your target roles|not a role you want/i.test(reason) ? 'Role'
+    : /dealbreaker/i.test(reason) ? 'Dealbreaker'
+    : /not remote/i.test(reason) ? 'Not remote'
+    : /no FX rate/i.test(reason) ? 'Currency'
+    : 'Other';
+  const groups = {};
+  for (const r of rows) (groups[bucket(r.eligibility_reason)] ||= []).push(r);
+  return Object.entries(groups)
+    .map(([name, items]) => ({ name, count: items.length, sample: items.slice(0, 25) }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function moneyState(month) {
+  const c = cfg('money.json');
+  const b = D.prepare('SELECT * FROM budget_months WHERE month = ?').get(month);
+  if (!b) return { month, currency: c.currency, symbol: c.symbol, planned: false, envelopeConfig: c.envelopes };
+
+  const envelopes = D.prepare(`
+    SELECT e.name, e.kind, e.planned, COALESCE(SUM(t.amount),0) spent
+    FROM envelopes e LEFT JOIN transactions t ON t.month=e.month AND t.envelope=e.name
+    WHERE e.month = ? GROUP BY e.name, e.kind, e.planned
+    ORDER BY CASE e.kind WHEN 'need' THEN 1 WHEN 'want' THEN 2 WHEN 'save' THEN 3 ELSE 4 END, e.name`).all(month);
+
+  const spent = envelopes.reduce((a, e) => a + e.spent, 0);
+  const [y, m] = month.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const today = new Date();
+  const isCurrent = today.toISOString().slice(0, 7) === month;
+  const day = isCurrent ? today.getDate() : daysInMonth;
+  const daysLeft = Math.max(0, daysInMonth - day);
+  const pace = day > 0 ? spent / day : 0;
+
+  return {
+    month, planned: true, currency: b.currency, symbol: c.symbol,
+    allocated: b.allocated, spent, left: b.allocated - spent,
+    closed: !!b.closed_at, daysLeft, daysInMonth,
+    perDay: daysLeft > 0 ? (b.allocated - spent) / daysLeft : null,
+    projected: pace * daysInMonth,
+    envelopes,
+    savingsRate: b.allocated
+      ? Math.round(envelopes.filter((e) => e.kind === 'save' || e.kind === 'invest')
+          .reduce((a, e) => a + e.planned, 0) / b.allocated * 100) : 0,
+    recent: D.prepare('SELECT id, at, envelope, amount, note FROM transactions WHERE month=? ORDER BY id DESC LIMIT 12').all(month),
+    goals: D.prepare('SELECT * FROM money_goals ORDER BY id').all(),
+    assumedReturn: c.projection.assumedAnnualReturn,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Running the pipeline. Output streams back as it happens.
+// ---------------------------------------------------------------------------
+
+const RUNNABLE = {
+  hunt:     ['src/jobs/hunt.mjs'],
+  packets:  ['src/jobs/apply.mjs', 'batch', '--tier=all', '--limit=60'],
+  score:    ['src/jobs/score.mjs'],
+  rescreen: ['src/jobs/hunt.mjs', '--rescreen'],
+  verify:   ['src/jobs/hunt.mjs', '--verify-companies'],
+  // Client side. `scout` collects leads; it writes nothing outbound and contacts nobody.
+  scout:    ['src/scout.mjs'],
+};
+
+function stream(res, args) {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive',
+  });
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  const child = spawn(process.execPath, ['--no-warnings=ExperimentalWarning', ...args], { cwd: ROOT });
+
+  let buf = '';
+  const pump = (chunk) => {
+    buf += chunk.toString();
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    lines.forEach((l) => send('line', l));
+  };
+  child.stdout.on('data', pump);
+  child.stderr.on('data', pump);
+  child.on('close', (code) => { if (buf) send('line', buf); send('done', { code }); res.end(); });
+  child.on('error', (e) => { send('line', `ERROR ${e.message}`); send('done', { code: 1 }); res.end(); });
+}
+
+// ---------------------------------------------------------------------------
+// Writes
+// ---------------------------------------------------------------------------
+
+const body = (req) => new Promise((resolve) => {
+  let s = '';
+  req.on('data', (c) => { s += c; if (s.length > 1e6) req.destroy(); });
+  req.on('end', () => { try { resolve(JSON.parse(s || '{}')); } catch { resolve({}); } });
+});
+
+function runSync(args) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ['--no-warnings=ExperimentalWarning', ...args], { cwd: ROOT });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { out += d; });
+    child.on('close', (code) => resolve({ code, out }));
+  });
+}
+
+// ---------------------------------------------------------------------------
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url, `http://${HOST}:${PORT}`);
+  const p = url.pathname;
+  const q = Object.fromEntries(url.searchParams);
+
+  try {
+    if (p === '/' || p === '/index.html') {
+      const html = readFileSync(join(ROOT, 'src', 'web', 'app.html'));
+      // no-store, because the page is read fresh from disk on every request but the browser was
+      // caching it: after any edit the UI silently stayed on the old version until a hard refresh,
+      // which reads as "the dashboard is broken" rather than "the dashboard is stale".
+      res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-store, must-revalidate' });
+      return res.end(html);
+    }
+
+    if (p === '/api/clients') return json(res, clients());
+    if (p === '/api/overview') return json(res, overview());
+    if (p === '/api/jobs') return json(res, jobList(q));
+    if (p === '/api/tracks') return json(res, trackSummary());
+    if (p === '/api/tiers') return json(res, tierSummary());
+    if (p.startsWith('/api/apply/') && p.endsWith('/pack')) {
+      const { applyPack } = await import('../jobs/autofill.mjs');
+      const pack = applyPack(p.split('/')[3]);
+      return pack ? json(res, pack) : json(res, { error: 'not found' }, 404);
+    }
+    if (p === '/api/deeplinks') return json(res, deepLinks());
+    if (p === '/api/profile') {
+      const { scoreTracks, gaps } = await import('../jobs/resume.mjs');
+      const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
+      return json(res, {
+        scores: scoreTracks(),
+        gaps: gaps(),
+        uploads: (master.uploads || []).map((u) => ({ file: u.file, chars: u.chars, addedAt: u.addedAt })),
+        answered: (master.ownerStated || []).map((f) => ({ track: f.track, key: f.key, question: f.question, answer: f.answer })),
+        identity: master.identity,
+      });
+    }
+    if (p === '/api/near-miss') return json(res, nearMiss());
+    if (p === '/api/money') return json(res, moneyState(q.month || new Date().toISOString().slice(0, 7)));
+    if (p === '/api/config') return json(res, { candidate: cfg('candidate.json'), money: cfg('money.json') });
+
+    if (p.startsWith('/api/job/')) {
+      const d = jobDetail(p.split('/')[3]);
+      return d ? json(res, d) : json(res, { error: 'not found' }, 404);
+    }
+
+    // Packet files, served read-only and confined to the packet directory.
+    if (p.startsWith('/packet/')) {
+      const [, , id, ...rest] = p.split('/');
+      const rel = normalize(rest.join('/')).replace(/^(\.\.[/\\])+/, '');
+      const dir = join(ROOT, 'data', 'applications', String(Number(id)));
+      const file = join(dir, rel);
+      if (!file.startsWith(dir) || !existsSync(file) || !statSync(file).isFile()) return json(res, { error: 'not found' }, 404);
+      res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' });
+      return res.end(readFileSync(file));
+    }
+
+    if (p === '/api/profile/upload' && req.method === 'POST') {
+      // Raw body plus ?name=, deliberately: multipart parsing is a lot of surface area for one
+      // file upload on a localhost-only server.
+      const name = (q.name || 'upload.pdf').replace(/[^A-Za-z0-9._-]/g, '_');
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      const buf = Buffer.concat(chunks);
+      if (!buf.length) return json(res, { ok: false, error: 'empty file' }, 400);
+      const tmp = join(ROOT, 'data', 'resume', name);
+      const { writeFileSync: wf } = await import('node:fs');
+      wf(tmp, buf);
+      try {
+        const { addResume, scoreTracks } = await import('../jobs/resume.mjs');
+        const r = addResume(tmp);
+        return json(res, { ok: true, file: r.file, chars: r.chars, scores: scoreTracks() });
+      } catch (e) { return json(res, { ok: false, error: e.message }, 200); }
+    }
+
+    // The owner recording that HE sent a message himself. This is the owner acting, exactly as
+    // typing the command would be. It never sends anything: there is no outbound call in this file
+    // and there must never be one.
+    if (p.startsWith('/api/client/') && p.endsWith('/sent') && req.method === 'POST') {
+      const id = Number(p.split('/')[3]);
+      const m = db().prepare('SELECT * FROM messages WHERE id=?').get(id);
+      if (!m) return json(res, { error: 'no such message' }, 404);
+      db().prepare("UPDATE messages SET status='sent', sent_at=? WHERE id=?").run(now(), id);
+      if (m.lead_id) db().prepare("UPDATE leads SET status='sent', updated_at=? WHERE id=?").run(now(), m.lead_id);
+      logEvent('sent_by_hand', `msg ${id} marked sent by the owner`, m.lead_id);
+      return json(res, { ok: true });
+    }
+
+    if (p.startsWith('/api/run/') && req.method === 'POST') {
+      const what = p.split('/')[3];
+      if (!RUNNABLE[what]) return json(res, { error: 'unknown task' }, 400);
+      return stream(res, RUNNABLE[what]);
+    }
+
+    if (req.method === 'POST') {
+      const b = await body(req);
+
+      if (p === '/api/money/plan') {
+        const r = await runSync(['src/money/ledger.mjs', 'plan', `--month=${b.month}`, `--amount=${Number(b.amount)}`]);
+        return json(res, { ok: r.code === 0, out: r.out });
+      }
+      if (p === '/api/money/spend') {
+        const args = ['src/money/ledger.mjs', 'spend', `--envelope=${b.envelope}`, `--amount=${Number(b.amount)}`, `--month=${b.month}`];
+        if (b.note) args.push(`--note=${b.note}`);
+        const r = await runSync(args);
+        return json(res, { ok: r.code === 0, out: r.out });
+      }
+      if (p === '/api/money/goal') {
+        const args = b.action === 'fund'
+          ? ['src/money/ledger.mjs', 'goal', 'fund', `--name=${b.name}`, `--amount=${Number(b.amount)}`]
+          : ['src/money/ledger.mjs', 'goal', 'add', `--name=${b.name}`, `--target=${Number(b.target)}`, ...(b.by ? [`--by=${b.by}`] : [])];
+        const r = await runSync(args);
+        return json(res, { ok: r.code === 0, out: r.out });
+      }
+      if (p === '/api/money/offer') {
+        const args = ['src/money/offer.mjs', `--usd=${Number(b.usd)}`];
+        if (b.rate) args.push(`--rate=${Number(b.rate)}`);
+        if (b.current) args.push(`--current=${Number(b.current)}`);
+        const r = await runSync(args);
+        return json(res, { ok: r.code === 0, out: r.out });
+      }
+
+      if (p.startsWith('/api/apply/')) {
+        const [, , , id, action] = p.split('/');
+        if (!['init', 'render', 'approve', 'applied'].includes(action)) return json(res, { error: 'unknown action' }, 400);
+
+        // The gate. A click here is the owner deciding, exactly as typing the command is - which is
+        // why it demands an explicit confirm token rather than firing on a stray request.
+        if ((action === 'approve' || action === 'applied') && b.confirm !== 'yes') {
+          return json(res, { error: 'confirmation required' }, 400);
+        }
+        const r = await runSync(['src/jobs/apply.mjs', action, `--job=${Number(id)}`]);
+        if (action === 'approve' && r.code === 0) logEvent('approved_via_dashboard', `job ${id}`);
+        return json(res, { ok: r.code === 0, out: r.out });
+      }
+
+      if (p.startsWith('/api/job/') && p.endsWith('/hide')) {
+        const id = Number(p.split('/')[3]);
+        setJobHidden(id, b.hidden !== false);
+        if (b.company) {
+          // "never this employer again" is a suppression, not a per-row flag.
+          D.prepare('INSERT OR IGNORE INTO suppression (pattern, reason, added_at) VALUES (?,?,?)')
+            .run(b.company, 'hidden from the dashboard', now());
+          D.prepare('UPDATE jobs SET hidden=1 WHERE company = ?').run(b.company);
+        }
+        return json(res, { ok: true });
+      }
+
+      if (p === '/api/ingest') {
+        const { ingest } = await import('../jobs/ingest.mjs');
+        try {
+          const r = await ingest({ url: b.url, text: b.text, title: b.title, company: b.company });
+          return json(res, { ok: true, ...r });
+        } catch (e) { return json(res, { ok: false, error: e.message }, 200); }
+      }
+
+      if (p === '/api/profile/answer') {
+        const { recordAnswer } = await import('../jobs/resume.mjs');
+        recordAnswer(b.track, b.key, b.answer);
+        return json(res, { ok: true });
+      }
+
+      if (p === '/api/config/mode') {
+        // One-line widening of the eligibility filter, from the UI.
+        const allowed = ['global-only', 'global-plus-india', 'global-plus-eor'];
+        if (!allowed.includes(b.mode)) return json(res, { error: 'bad mode' }, 400);
+        const file = join(ROOT, 'config', 'candidate.json');
+        const c = JSON.parse(readFileSync(file, 'utf8'));
+        c.eligibility.mode = b.mode;
+        const { writeFileSync } = await import('node:fs');
+        writeFileSync(file, JSON.stringify(c, null, 2) + '\n');
+        logEvent('eligibility_mode', b.mode);
+        return json(res, { ok: true, mode: b.mode, note: 'Re-run the hunt for this to take effect.' });
+      }
+    }
+
+    json(res, { error: 'not found' }, 404);
+  } catch (err) {
+    json(res, { error: err.message }, 500);
+  }
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`\n  Job Hunter\n  http://${HOST}:${PORT}\n`);
+  console.log(`  Bound to localhost only. Nothing here submits an application.\n`);
+});

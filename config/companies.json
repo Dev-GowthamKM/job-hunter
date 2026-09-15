@@ -1,0 +1,622 @@
+{
+  "_comment": "Company registry. This IS the 'branded or good startup' filter - quality comes from WHICH boards we poll, not from keywords. Every slug here was verified live. Re-verify with: node src/jobs/hunt.mjs --verify-companies",
+  "_globalHiring": "A RANKING HINT ONLY. Eligibility is decided per job post by src/jobs/eligibility.mjs, never per company. A company marked true still posts US-only roles.",
+  "companies": [
+    {
+      "slug": "affirm",
+      "ats": "greenhouse",
+      "name": "Affirm",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "airtable",
+      "ats": "greenhouse",
+      "name": "Airtable",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "anthropic",
+      "ats": "greenhouse",
+      "name": "Anthropic",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "asana",
+      "ats": "greenhouse",
+      "name": "Asana",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "brex",
+      "ats": "greenhouse",
+      "name": "Brex",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "calendly",
+      "ats": "greenhouse",
+      "name": "Calendly",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "canonical",
+      "ats": "greenhouse",
+      "name": "Canonical (Ubuntu)",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Fully remote worldwide, hires from India regularly."
+    },
+    {
+      "slug": "checkr",
+      "ats": "greenhouse",
+      "name": "Checkr",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "cloudflare",
+      "ats": "greenhouse",
+      "name": "Cloudflare",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "cockroachlabs",
+      "ats": "greenhouse",
+      "name": "Cockroach Labs",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "cohere",
+      "ats": "ashby",
+      "name": "Cohere",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "coinbase",
+      "ats": "greenhouse",
+      "name": "Coinbase",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "databricks",
+      "ats": "greenhouse",
+      "name": "Databricks",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "discord",
+      "ats": "greenhouse",
+      "name": "Discord",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "dropbox",
+      "ats": "greenhouse",
+      "name": "Dropbox",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "duolingo",
+      "ats": "greenhouse",
+      "name": "Duolingo",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "elastic",
+      "ats": "greenhouse",
+      "name": "Elastic",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Distributed company, many countries."
+    },
+    {
+      "slug": "elevenlabs",
+      "ats": "ashby",
+      "name": "ElevenLabs",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Remote-heavy, hires internationally."
+    },
+    {
+      "slug": "figma",
+      "ats": "greenhouse",
+      "name": "Figma",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "gitlab",
+      "ats": "greenhouse",
+      "name": "GitLab",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "All-remote by design, hires in 65+ countries."
+    },
+    {
+      "slug": "gopuff",
+      "ats": "lever",
+      "name": "Gopuff",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "grafanalabs",
+      "ats": "greenhouse",
+      "name": "Grafana Labs",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Remote-first, hires broadly."
+    },
+    {
+      "slug": "gusto",
+      "ats": "greenhouse",
+      "name": "Gusto",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "instacart",
+      "ats": "greenhouse",
+      "name": "Instacart",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "linear",
+      "ats": "ashby",
+      "name": "Linear",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Remote-first, small senior team."
+    },
+    {
+      "slug": "matchgroup",
+      "ats": "lever",
+      "name": "Match Group",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "mongodb",
+      "ats": "greenhouse",
+      "name": "MongoDB",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": "Has large India presence."
+    },
+    {
+      "slug": "mozilla",
+      "ats": "greenhouse",
+      "name": "Mozilla",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Distributed non-profit."
+    },
+    {
+      "slug": "openai",
+      "ats": "ashby",
+      "name": "OpenAI",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "pinterest",
+      "ats": "greenhouse",
+      "name": "Pinterest",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "pipedrive",
+      "ats": "lever",
+      "name": "Pipedrive",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "postman",
+      "ats": "greenhouse",
+      "name": "Postman",
+      "tier": "brand",
+      "globalHiring": true,
+      "notes": "Bangalore engineering presence."
+    },
+    {
+      "slug": "ramp",
+      "ats": "ashby",
+      "name": "Ramp",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "reddit",
+      "ats": "greenhouse",
+      "name": "Reddit",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "replit",
+      "ats": "ashby",
+      "name": "Replit",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "robinhood",
+      "ats": "greenhouse",
+      "name": "Robinhood",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "samsara",
+      "ats": "greenhouse",
+      "name": "Samsara",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "scaleai",
+      "ats": "greenhouse",
+      "name": "Scale AI",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "stripe",
+      "ats": "greenhouse",
+      "name": "Stripe",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "twilio",
+      "ats": "greenhouse",
+      "name": "Twilio",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "vanta",
+      "ats": "ashby",
+      "name": "Vanta",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "vercel",
+      "ats": "greenhouse",
+      "name": "Vercel",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "wise",
+      "ats": "greenhouse",
+      "name": "Wise",
+      "tier": "brand",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "aha",
+      "ats": "greenhouse",
+      "name": "Aha!",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Fully remote company."
+    },
+    {
+      "slug": "airbyte",
+      "ats": "ashby",
+      "name": "Airbyte",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Open source, distributed."
+    },
+    {
+      "slug": "astronomer",
+      "ats": "ashby",
+      "name": "Astronomer",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "baseten",
+      "ats": "ashby",
+      "name": "Baseten",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "browserbase",
+      "ats": "ashby",
+      "name": "Browserbase",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "cabify",
+      "ats": "greenhouse",
+      "name": "Cabify",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": "Spain/LatAm focused."
+    },
+    {
+      "slug": "clerk",
+      "ats": "ashby",
+      "name": "Clerk",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "consensys",
+      "ats": "greenhouse",
+      "name": "Consensys",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Crypto, remote-global tradition."
+    },
+    {
+      "slug": "decagon",
+      "ats": "ashby",
+      "name": "Decagon",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "deepgram",
+      "ats": "ashby",
+      "name": "Deepgram",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "ghost",
+      "ats": "greenhouse",
+      "name": "Ghost",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Fully remote non-profit, small team."
+    },
+    {
+      "slug": "harvey",
+      "ats": "ashby",
+      "name": "Harvey",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "hex",
+      "ats": "ashby",
+      "name": "Hex",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "inngest",
+      "ats": "ashby",
+      "name": "Inngest",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "invisible",
+      "ats": "greenhouse",
+      "name": "Invisible Technologies",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Fully remote, global operations."
+    },
+    {
+      "slug": "langchain",
+      "ats": "ashby",
+      "name": "LangChain",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "ledger",
+      "ats": "lever",
+      "name": "Ledger",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "llamaindex",
+      "ats": "ashby",
+      "name": "LlamaIndex",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "mattermost",
+      "ats": "greenhouse",
+      "name": "Mattermost",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Remote-first open source."
+    },
+    {
+      "slug": "mercor",
+      "ats": "ashby",
+      "name": "Mercor",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "modal",
+      "ats": "ashby",
+      "name": "Modal",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "neon",
+      "ats": "ashby",
+      "name": "Neon",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Distributed team."
+    },
+    {
+      "slug": "pinecone",
+      "ats": "ashby",
+      "name": "Pinecone",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "prisma",
+      "ats": "greenhouse",
+      "name": "Prisma",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": "Small remote EU-leaning team."
+    },
+    {
+      "slug": "railway",
+      "ats": "ashby",
+      "name": "Railway",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Fully remote, hires globally."
+    },
+    {
+      "slug": "remote",
+      "ats": "greenhouse",
+      "name": "Remote (alt board)",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Second Remote.com board."
+    },
+    {
+      "slug": "remotecom",
+      "ats": "greenhouse",
+      "name": "Remote.com",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Remote-first EOR company; hires globally by definition."
+    },
+    {
+      "slug": "resend",
+      "ats": "ashby",
+      "name": "Resend",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Small remote team."
+    },
+    {
+      "slug": "runway",
+      "ats": "ashby",
+      "name": "Runway",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "sardine",
+      "ats": "ashby",
+      "name": "Sardine",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "sierra",
+      "ats": "ashby",
+      "name": "Sierra",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "turing",
+      "ats": "greenhouse",
+      "name": "Turing",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Remote talent marketplace, hires heavily from India."
+    },
+    {
+      "slug": "warp",
+      "ats": "ashby",
+      "name": "Warp",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    },
+    {
+      "slug": "zed",
+      "ats": "ashby",
+      "name": "Zed",
+      "tier": "funded-startup",
+      "globalHiring": "unknown",
+      "notes": ""
+    }
+  ]
+}

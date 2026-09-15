@@ -1,0 +1,98 @@
+{
+  "_comment": "Copy to config/money.json. Nothing here moves money; it tracks what you decide and does the arithmetic.",
+  "currency": "INR",
+  "symbol": "₹",
+  "payday": 1,
+  "envelopes": [
+    {
+      "name": "rent",
+      "kind": "need",
+      "percent": 25
+    },
+    {
+      "name": "food",
+      "kind": "need",
+      "percent": 15
+    },
+    {
+      "name": "transport",
+      "kind": "need",
+      "percent": 6
+    },
+    {
+      "name": "bills",
+      "kind": "need",
+      "percent": 8
+    },
+    {
+      "name": "health",
+      "kind": "need",
+      "percent": 4
+    },
+    {
+      "name": "fun",
+      "kind": "want",
+      "percent": 10
+    },
+    {
+      "name": "shopping",
+      "kind": "want",
+      "percent": 5
+    },
+    {
+      "name": "emergency",
+      "kind": "save",
+      "percent": 12
+    },
+    {
+      "name": "invest",
+      "kind": "invest",
+      "percent": 15
+    }
+  ],
+  "_envelopes": "Percentages of the month's allocation, and they must total 100. Edit freely - these are a starting split, not advice. 'invest' is a holding envelope: the agent tracks what you put there and never tells you where to put it.",
+  "projection": {
+    "assumedAnnualReturn": 0.08,
+    "_assumedAnnualReturn": "YOUR assumption, used only to project a savings goal forward. It is arithmetic on a number you chose, not a forecast and not a recommendation. Every projection prints this rate alongside the result."
+  },
+  "offerModel": {
+    "usdToInr": 87,
+    "_usdToInr": "Rate you set. Update it when it drifts; every offer model prints the rate it used.",
+    "currentAnnualTakeHomeInr": null,
+    "_currentAnnualTakeHomeInr": "Your present take-home for the year, so an offer can be compared against something real. Fill this in from your payslips - the agent will not guess it.",
+    "regime": "new",
+    "taxSlabsNewRegime": [
+      {
+        "upTo": 400000,
+        "rate": 0
+      },
+      {
+        "upTo": 800000,
+        "rate": 0.05
+      },
+      {
+        "upTo": 1200000,
+        "rate": 0.1
+      },
+      {
+        "upTo": 1600000,
+        "rate": 0.15
+      },
+      {
+        "upTo": 2000000,
+        "rate": 0.2
+      },
+      {
+        "upTo": 2400000,
+        "rate": 0.25
+      },
+      {
+        "upTo": null,
+        "rate": 0.3
+      }
+    ],
+    "standardDeduction": 75000,
+    "cessRate": 0.04,
+    "_tax": "Editable slabs for the Indian new regime. THIS IS A CALCULATOR, NOT TAX ADVICE - the numbers change with each budget, and a real filing has details this ignores. Check against the current finance act before making a decision on it."
+  }
+}
