@@ -1,7 +1,7 @@
 // Single source of truth for the whole CEO agent system.
 // Uses node:sqlite (built into Node 22+), so the pipeline has zero dependencies.
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, copyFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -286,6 +286,34 @@ function migrate(d) {
     if (!cols.includes(name)) d.exec(`ALTER TABLE jobs ADD COLUMN ${name} ${ddl}`);
   }
 }
+
+/**
+ * Make sure the files every module reads actually exist.
+ *
+ * config/candidate.json is gitignored, because it holds a real name, salary expectations and
+ * work-authorisation status. So a fresh clone has only the .example.json, and the first command a
+ * new user runs dies on ENOENT inside a stack trace. Seeding from the example turns that into a
+ * working default they can edit, and `npm run setup` fills in the parts that matter.
+ *
+ * This runs at import rather than on demand because a dozen modules read these files directly, and
+ * one seam everything already passes through beats a dozen guards that can be forgotten.
+ */
+function ensureConfigs() {
+  for (const dir of ['data', 'data/resume', 'data/applications', 'outbox']) {
+    try { mkdirSync(join(ROOT, dir), { recursive: true }); } catch { /* already there */ }
+  }
+  for (const [example, real] of [
+    ['config/candidate.example.json', 'config/candidate.json'],
+    ['config/money.example.json', 'config/money.json'],
+  ]) {
+    const target = join(ROOT, real);
+    const source = join(ROOT, example);
+    if (!existsSync(target) && existsSync(source)) {
+      try { copyFileSync(source, target); } catch { /* read-only checkout, not fatal */ }
+    }
+  }
+}
+ensureConfigs();
 
 export const now = () => new Date().toISOString();
 

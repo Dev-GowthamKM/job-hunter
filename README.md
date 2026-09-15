@@ -96,12 +96,13 @@ and never contains a click on a submit control.
 ## Setup
 
 ```bash
-cp config/candidate.example.json config/candidate.json   # who you are, what you want
-cp config/money.example.json     config/money.json       # optional: budget tracking
-npm run init                                             # create the database
-npm run hunt                                             # collect
-npm run web                                              # look at it
+npm run setup    # four questions, about a minute
+npm run hunt     # collect
+npm run web      # http://127.0.0.1:4321
 ```
+
+Node 22+ and Google Chrome (which renders the PDFs). Nothing to install. Full walkthrough in
+[SETUP.md](SETUP.md).
 
 `config/candidate.json` drives everything — the tracks you search, the salary bands per track, the
 seniority rules and the eligibility mode. `data/resume/master.json` is the fact bank: the resume
