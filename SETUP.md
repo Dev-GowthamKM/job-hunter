@@ -98,3 +98,59 @@ job boards. Later runs skip everything already seen.
 All of it is local: `data/pipeline.db`, `config/candidate.json`, and your packets under
 `data/applications/`. Deleting the folder deletes everything. None of it is gitignored by accident —
 those paths are excluded from version control on purpose so you cannot publish them.
+
+---
+
+# Sharing it with friends
+
+You can let friends use your copy over a link instead of each installing it. It costs nothing, but
+read the first line of the next section before you do.
+
+## Turn on the gate
+
+```bash
+SHARE=1 npm run web
+```
+
+`SHARE=1` does two things at once, deliberately: it opens the port beyond localhost **and** it
+requires a login on every route. You cannot have one without the other. Without the gate, anyone
+with the link gets your resume, your budget, your salary expectations and every application packet
+with your phone number on it.
+
+## Put it behind a tunnel
+
+Do not forward the port on your router. Use a tunnel, which gives you an HTTPS address without
+opening anything:
+
+```bash
+brew install cloudflared
+cloudflared tunnel --url http://localhost:4321
+```
+
+That prints a public `https://…trycloudflare.com` URL. Share that. It lives as long as the command
+runs.
+
+## What your friends get
+
+They open the link, click **Create one**, and get their own account: their own profile, their own
+resume, their own applications. They search the same pool of collected jobs — that part is shared,
+because a job posting is the same fact for everyone — but everything personal is theirs.
+
+They cannot see your resume, your budget, your packets or your client leads. Your `Clients` tab does
+not even appear for them.
+
+## What it costs you
+
+Your machine is the server. It has to be awake and running for the link to work, and every search
+your friends run uses your connection. For a few people testing, that is nothing. It is not a way to
+run something with real users.
+
+## Before you share
+
+- Create your own account first, so your data belongs to it rather than to "no user":
+  ```bash
+  npm run users create -- --email=you@example.com --name="Your Name"
+  npm run users claim  -- --email=you@example.com
+  ```
+- `npm run users list` shows who has signed up.
+- Stopping the `cloudflared` command kills the link immediately.

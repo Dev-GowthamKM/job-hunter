@@ -44,6 +44,35 @@ code,.mono,.n,.amt,.score,.st-n { font-family:"JetBrains Mono",ui-monospace,SFMo
 a { color:inherit; }
 ::selection { background:var(--accent); color:var(--accent-ink); }
 
+/* ── sign-in ─────────────────────────────────────────── */
+#gate {
+  position:fixed; inset:0; z-index:90; background:var(--bg);
+  display:flex; align-items:center; justify-content:center; padding:24px;
+}
+#gate[hidden] { display:none; }
+/* label.f sets display:flex, which beats the browser default for [hidden]. Without this the
+   name field stayed visible on the sign-in form. */
+[hidden] { display:none !important; }
+.gate-card {
+  width:min(400px,100%); background:var(--panel); border:1px solid var(--line);
+  border-radius:16px; padding:32px 30px; box-shadow:var(--shadow);
+}
+.gate-brand { display:flex; align-items:center; gap:10px; margin-bottom:22px; }
+.gate-brand b { font-family:"Fraunces",Georgia,serif; font-size:16px; font-weight:600; }
+.gate-card h2 { font-family:"Fraunces",Georgia,serif; font-size:25px; font-weight:600; letter-spacing:-.02em; margin-bottom:8px; }
+.gate-card .note { margin-bottom:22px; }
+#gate-form { display:flex; flex-direction:column; gap:14px; }
+#gate-form input { padding:11px 13px; font-size:14px; }
+#gate-form .act { margin-top:6px; padding:12px; font-size:14px; }
+.gate-err {
+  background:rgba(240,97,109,.12); border:1px solid rgba(240,97,109,.45);
+  color:var(--bad); border-radius:var(--r-sm); padding:10px 12px; font-size:12.5px;
+}
+.gate-err[hidden] { display:none; }
+.gate-swap { margin-top:18px; text-align:center; }
+.gate-swap a { color:var(--accent); text-decoration:none; font-weight:600; }
+.gate-swap a:hover { text-decoration:underline; }
+
 /* ── sidebar ─────────────────────────────────────────── */
 aside {
   width:228px; flex:0 0 228px; background:var(--panel); border-right:1px solid var(--line);
@@ -226,6 +255,25 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 </style>
 </head>
 <body>
+
+<div id="gate" hidden>
+  <div class="gate-card">
+    <div class="gate-brand"><span class="dot"></span><b>Job Hunter</b></div>
+    <h2 id="gate-title">Sign in</h2>
+    <p class="note" id="gate-note">Your resume, your searches and your applications stay yours. Nobody else signed in here can see them.</p>
+    <form id="gate-form">
+      <label class="f" id="name-field" hidden>Name<input id="g-name" autocomplete="name"></label>
+      <label class="f">Email<input id="g-email" type="email" autocomplete="email" required></label>
+      <label class="f">Password<input id="g-pass" type="password" autocomplete="current-password" required></label>
+      <div class="gate-err" id="gate-err" hidden></div>
+      <button class="act" id="g-go" type="submit">Sign in</button>
+    </form>
+    <p class="note gate-swap">
+      <span id="swap-text">No account yet?</span>
+      <a href="#" id="gate-swap">Create one</a>
+    </p>
+  </div>
+</div>
 
 <aside>
   <div class="brand"><span class="dot"></span><b>Job Hunter</b></div>
@@ -1250,9 +1298,64 @@ async function refreshCounts() {
   } catch { /* profile is optional at boot */ }
 }
 
-/* ── boot ───────────────────────────────────────────────── */
-show(location.hash.slice(1) || 'overview');
-refreshCounts();
+/* ── sign-in ────────────────────────────────────────────── */
+let SESSION = { signedIn: true, share: false };
+let gateMode = 'login';
+
+function paintGate() {
+  const signup = gateMode === 'signup';
+  $('#gate-title').textContent = signup ? 'Create an account' : 'Sign in';
+  $('#g-go').textContent = signup ? 'Create account' : 'Sign in';
+  $('#name-field').hidden = !signup;
+  $('#swap-text').textContent = signup ? 'Already have an account?' : 'No account yet?';
+  $('#gate-swap').textContent = signup ? 'Sign in' : 'Create one';
+  $('#g-pass').setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+  $('#gate-note').textContent = signup
+    ? 'Your resume, your searches and your applications stay yours. Nobody else signed in here can see them.'
+    : 'Your resume, your searches and your applications stay yours.';
+  $('#gate-err').hidden = true;
+}
+
+$('#gate-swap').onclick = (e) => { e.preventDefault(); gateMode = gateMode === 'login' ? 'signup' : 'login'; paintGate(); };
+
+$('#gate-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('#g-go');
+  btn.disabled = true; btn.textContent = 'Working…';
+  const r = await api(`/api/${gateMode}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: $('#g-email').value, password: $('#g-pass').value, name: $('#g-name').value }),
+  });
+  btn.disabled = false;
+  if (r.signedIn) { location.reload(); return; }
+  const err = $('#gate-err');
+  err.textContent = r.error || 'That did not work.';
+  err.hidden = false;
+  paintGate(); err.hidden = false;
+};
+
+async function boot() {
+  SESSION = await api('/api/session');
+  if (SESSION.share && !SESSION.signedIn) {
+    $('#gate').hidden = false;
+    paintGate();
+    return;                                   // the app never loads for a signed-out visitor
+  }
+  if (SESSION.share && SESSION.user) {
+    // The client arm is the owner's freelance business. Its API already 404s for everyone else;
+    // leaving the tab in the nav would just be a door that does not open.
+    document.querySelectorAll('[data-v="clients"], [data-v="search"]').forEach((b) => b.remove());
+    // A shared instance should say whose session this is, and offer a way out of it.
+    const foot = document.querySelector('.sidefoot');
+    if (foot) foot.innerHTML = `Signed in as <b>${esc(SESSION.user.name || SESSION.user.email)}</b>
+      <div style="margin-top:8px"><button class="act ghost" id="signout" style="padding:5px 9px;font-size:11px">Sign out</button></div>`;
+    const so = $('#signout');
+    if (so) so.onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload(); };
+  }
+  show(location.hash.slice(1) || 'overview');
+  refreshCounts();
+}
+boot();
 </script>
 </body>
 </html>

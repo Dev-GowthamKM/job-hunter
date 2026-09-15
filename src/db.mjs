@@ -285,6 +285,19 @@ function migrate(d) {
   for (const [name, ddl] of added) {
     if (!cols.includes(name)) d.exec(`ALTER TABLE jobs ADD COLUMN ${name} ${ddl}`);
   }
+
+  // Everything that belongs to a person rather than to the world needs an owner.
+  //
+  // Default 0 is the single-user owner, which is what every row created before accounts existed
+  // is. The dashboard reads user_id 0 when it is running on someone's own machine with no login,
+  // so those rows stay exactly where they were.
+  for (const table of ['applications', 'budget_months', 'envelopes', 'transactions', 'money_goals']) {
+    const c = d.prepare(`PRAGMA table_info(${table})`).all().map((x) => x.name);
+    if (c.length && !c.includes('user_id')) {
+      d.exec(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0`);
+      d.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_user ON ${table}(user_id)`);
+    }
+  }
 }
 
 /**

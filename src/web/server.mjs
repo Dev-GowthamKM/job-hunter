@@ -16,10 +16,23 @@ import { join, extname, normalize } from 'node:path';
 import { spawn } from 'node:child_process';
 import { ROOT, db, now, logEvent, setJobHidden } from '../db.mjs';
 import { fmt } from '../jobs/eligibility.mjs';
+import { authenticate, createUser, startSession, userForToken, endSession, pruneSessions, tooManyAttempts, recordAttempt, clearAttempts } from '../auth.mjs';
+import { profileFor, saveProfile, profileReadiness } from '../profile.mjs';
 import { enabledTracks } from '../jobs/tracks.mjs';
 
 const PORT = Number(process.env.PORT || 4321);
-const HOST = '127.0.0.1';
+
+// Two modes, and the difference is who can reach it.
+//
+//   default          127.0.0.1, no login. One person, their own machine.
+//   SHARE=1          0.0.0.0, login required on every route. Safe to put behind a tunnel.
+//
+// SHARE is what makes a link shareable. It is not just a bind address: without a login the
+// dashboard hands out the owner's resume, budget, salary expectations and every application
+// packet to anyone who has the URL, so the two are deliberately the same switch. You cannot
+// open the port without turning on the gate.
+const SHARE = process.env.SHARE === '1';
+const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
 const D = db();
 
 const cfg = (f) => JSON.parse(readFileSync(join(ROOT, 'config', f), 'utf8'));
@@ -100,10 +113,12 @@ function clients() {
   };
 }
 
-function overview() {
+function overview(userId = 0) {
   const jobs = {
     total: D.prepare('SELECT COUNT(*) n FROM jobs').get().n,
-    byEligibility: D.prepare('SELECT eligibility, COUNT(*) n FROM jobs GROUP BY eligibility').all(),
+    byEligibility: (userId && D.prepare('SELECT COUNT(*) n FROM user_jobs WHERE user_id = ?').get(userId).n)
+      ? D.prepare('SELECT eligibility, COUNT(*) n FROM user_jobs WHERE user_id = ? GROUP BY eligibility').all(userId)
+      : D.prepare('SELECT eligibility, COUNT(*) n FROM jobs GROUP BY eligibility').all(),
     byStatus: D.prepare('SELECT status, COUNT(*) n FROM jobs GROUP BY status').all(),
     bySource: D.prepare('SELECT source, COUNT(*) n FROM jobs GROUP BY source ORDER BY n DESC').all(),
   };
@@ -112,15 +127,15 @@ function overview() {
   const cand = cfg('candidate.json');
 
   const month = new Date().toISOString().slice(0, 7);
-  const b = D.prepare('SELECT * FROM budget_months WHERE month = ?').get(month);
-  const spent = b ? D.prepare('SELECT COALESCE(SUM(amount),0) s FROM transactions WHERE month=?').get(month).s : 0;
+  const b = D.prepare('SELECT * FROM budget_months WHERE month = ? AND user_id = ?').get(month, userId);
+  const spent = b ? D.prepare('SELECT COALESCE(SUM(amount),0) s FROM transactions WHERE month=? AND user_id=?').get(month, userId).s : 0;
 
   return {
     jobs, companies, lastRun: lastRun ? { at: lastRun.at, detail: JSON.parse(lastRun.detail || '{}') } : null,
     mode: cand.eligibility.mode,
     band: { min: cand.compensation.min, max: cand.compensation.max },
     money: b ? { month, allocated: b.allocated, spent, left: b.allocated - spent, currency: b.currency } : { month, allocated: null },
-    pendingApproval: D.prepare("SELECT COUNT(*) n FROM applications WHERE status='awaiting_approval'").get().n,
+    pendingApproval: D.prepare("SELECT COUNT(*) n FROM applications WHERE status='awaiting_approval' AND user_id = ?").get(userId).n,
   };
 }
 
@@ -182,8 +197,15 @@ function jobList(q) {
 }
 
 /** How many jobs sit in each tier, so the UI can label the chips honestly. */
-function tierSummary() {
-  const rows = D.prepare('SELECT tier, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY tier').all();
+function tierSummary(userId = 0) {
+  // A user with their own screening sees their own tiers. Until they have run one, they see the
+  // shared pool's shape - which is honest, because the pool is the same for everyone and the
+  // tiering is the only part that is personal.
+  const mine = userId
+    ? D.prepare('SELECT COUNT(*) n FROM user_jobs WHERE user_id = ?').get(userId).n : 0;
+  const rows = mine
+    ? D.prepare('SELECT tier, COUNT(*) n FROM user_jobs WHERE user_id = ? AND hidden = 0 GROUP BY tier').all(userId)
+    : D.prepare('SELECT tier, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY tier').all();
   const n = Object.fromEntries(rows.map((r) => [r.tier, r.n]));
   return [
     { key: 'match', label: 'Apply to these', n: n.match || 0,
@@ -275,16 +297,16 @@ function nearMiss() {
     .sort((a, b) => b.count - a.count);
 }
 
-function moneyState(month) {
+function moneyState(month, userId = 0) {
   const c = cfg('money.json');
-  const b = D.prepare('SELECT * FROM budget_months WHERE month = ?').get(month);
+  const b = D.prepare('SELECT * FROM budget_months WHERE month = ? AND user_id = ?').get(month, userId);
   if (!b) return { month, currency: c.currency, symbol: c.symbol, planned: false, envelopeConfig: c.envelopes };
 
   const envelopes = D.prepare(`
     SELECT e.name, e.kind, e.planned, COALESCE(SUM(t.amount),0) spent
-    FROM envelopes e LEFT JOIN transactions t ON t.month=e.month AND t.envelope=e.name
-    WHERE e.month = ? GROUP BY e.name, e.kind, e.planned
-    ORDER BY CASE e.kind WHEN 'need' THEN 1 WHEN 'want' THEN 2 WHEN 'save' THEN 3 ELSE 4 END, e.name`).all(month);
+    FROM envelopes e LEFT JOIN transactions t ON t.month=e.month AND t.envelope=e.name AND t.user_id=e.user_id
+    WHERE e.month = ? AND e.user_id = ? GROUP BY e.name, e.kind, e.planned
+    ORDER BY CASE e.kind WHEN 'need' THEN 1 WHEN 'want' THEN 2 WHEN 'save' THEN 3 ELSE 4 END, e.name`).all(month, userId);
 
   const spent = envelopes.reduce((a, e) => a + e.spent, 0);
   const [y, m] = month.split('-').map(Number);
@@ -305,8 +327,8 @@ function moneyState(month) {
     savingsRate: b.allocated
       ? Math.round(envelopes.filter((e) => e.kind === 'save' || e.kind === 'invest')
           .reduce((a, e) => a + e.planned, 0) / b.allocated * 100) : 0,
-    recent: D.prepare('SELECT id, at, envelope, amount, note FROM transactions WHERE month=? ORDER BY id DESC LIMIT 12').all(month),
-    goals: D.prepare('SELECT * FROM money_goals ORDER BY id').all(),
+    recent: D.prepare('SELECT id, at, envelope, amount, note FROM transactions WHERE month=? AND user_id=? ORDER BY id DESC LIMIT 12').all(month, userId),
+    goals: D.prepare('SELECT * FROM money_goals WHERE user_id = ? ORDER BY id').all(userId),
     assumedReturn: c.projection.assumedAnnualReturn,
   };
 }
@@ -367,12 +389,118 @@ function runSync(args) {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Track coverage for an arbitrary fact bank.
+ *
+ * resume.mjs scoreTracks() reads the owner's master.json from disk, which is correct for the CLI
+ * and wrong for a shared server: it answered every user with the owner's resume. This takes the
+ * bank as an argument so each account is scored against its own.
+ */
+function scoreTracksFor(master, candidate) {
+  const skills = Object.entries(master?.skills || {})
+    .filter(([k, v]) => k !== 'source' && Array.isArray(v)).flatMap(([, v]) => v)
+    .map((x) => String(x).toLowerCase());
+  const facts = (master?.experience?.length || 0) + (master?.projects?.length || 0);
+
+  return Object.entries(candidate?.tracks || {}).map(([key, t]) => {
+    const want = (t.titles || []).map((x) => String(x).toLowerCase());
+    const matched = want.filter((w) => skills.some((s) => s.includes(w.split(' ')[0])));
+    return {
+      track: key,
+      label: t.label || key,
+      percent: facts ? Math.min(95, Math.round((matched.length / Math.max(want.length, 1)) * 100) + facts * 5) : 0,
+      matched: matched.slice(0, 10),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+const parseCookies = (header = '') => Object.fromEntries(
+  header.split(';').map((c) => c.trim().split('=')).filter((p) => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]),
+);
+
+function setSessionCookie(res, token, expires) {
+  // HttpOnly so page scripts cannot read it; SameSite=Lax so another site cannot ride the session.
+  // Secure is set only behind a tunnel, because on plain localhost it would stop the cookie working.
+  const bits = [`sid=${token}`, 'HttpOnly', 'Path=/', 'SameSite=Lax', `Expires=${new Date(expires).toUTCString()}`];
+  if (SHARE) bits.push('Secure');
+  res.setHeader('set-cookie', bits.join('; '));
+}
+
+const clearSessionCookie = (res) => res.setHeader('set-cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+
+/** Who is asking. In single-user mode that is always the owner, with no login. */
+function currentUser(req) {
+  if (!SHARE) return { id: 0, email: null, name: 'owner', owner: true };
+  const token = parseCookies(req.headers.cookie || '').sid;
+  return userForToken(token);
+}
+
+// Reachable without being signed in. Everything else is gated.
+const PUBLIC_PATHS = new Set(['/', '/index.html', '/api/session', '/api/login', '/api/signup', '/api/logout']);
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
 
   try {
+    const me = currentUser(req);
+
+    // ── auth routes ───────────────────────────────────────────────────────
+    if (p === '/api/session') {
+      return json(res, me
+        ? { signedIn: true, user: { id: me.id, email: me.email, name: me.name }, share: SHARE, readiness: profileReadiness(me.id) }
+        : { signedIn: false, share: SHARE });
+    }
+
+    if (p === '/api/login' && req.method === 'POST') {
+      const b = await body(req);
+      // Rate limit per source address, so a shared link cannot be brute forced from one machine.
+      const key = `login:${req.socket.remoteAddress}`;
+      if (tooManyAttempts(key)) return json(res, { error: 'Too many attempts. Wait fifteen minutes.' }, 429);
+      const user = await authenticate(b.email, b.password);
+      if (!user) { recordAttempt(key); return json(res, { error: 'Wrong email or password.' }, 401); }
+      clearAttempts(key);
+      const { token, expires } = startSession(user.id, req.headers['user-agent'] || null);
+      setSessionCookie(res, token, expires);
+      return json(res, { signedIn: true, user });
+    }
+
+    if (p === '/api/signup' && req.method === 'POST') {
+      if (!SHARE) return json(res, { error: 'Accounts are only used in shared mode.' }, 400);
+      const b = await body(req);
+      const key = `signup:${req.socket.remoteAddress}`;
+      if (tooManyAttempts(key, { max: 4, windowMs: 60 * 60 * 1000 })) return json(res, { error: 'Too many accounts from here. Try later.' }, 429);
+      try {
+        const id = await createUser({ email: b.email, password: b.password, name: b.name });
+        recordAttempt(key);
+        saveProfile(id, profileFor(-1));            // a starter profile, nothing personal in it
+        const { token, expires } = startSession(id, req.headers['user-agent'] || null);
+        setSessionCookie(res, token, expires);
+        return json(res, { signedIn: true, user: { id, email: b.email, name: b.name } });
+      } catch (e) {
+        return json(res, { error: e.userFacing ? e.message : 'Could not create that account.' }, 400);
+      }
+    }
+
+    if (p === '/api/logout' && req.method === 'POST') {
+      endSession(parseCookies(req.headers.cookie || '').sid);
+      clearSessionCookie(res);
+      return json(res, { signedIn: false });
+    }
+
+    // ── the gate ──────────────────────────────────────────────────────────
+    // Everything below this line needs a signed-in user when the port is open. This is a single
+    // check rather than a flag on each route, because a route added later would otherwise default
+    // to public, and the default has to be closed.
+    if (SHARE && !me && !PUBLIC_PATHS.has(p)) {
+      return json(res, { error: 'Sign in first.', signedIn: false }, 401);
+    }
+
     if (p === '/' || p === '/index.html') {
       const html = readFileSync(join(ROOT, 'src', 'web', 'app.html'));
       // no-store, because the page is read fresh from disk on every request but the browser was
@@ -382,31 +510,49 @@ const server = createServer(async (req, res) => {
       return res.end(html);
     }
 
-    if (p === '/api/clients') return json(res, clients());
-    if (p === '/api/overview') return json(res, overview());
+    // The client arm is the owner's freelance business, not a shared feature. On a shared
+    // instance it does not exist for anyone else rather than returning an empty shell, because an
+    // empty shell still tells a visitor it is there.
+    if (p === '/api/clients') {
+      if (!me.owner) return json(res, { error: 'not found' }, 404);
+      return json(res, clients());
+    }
+    if (p === '/api/overview') return json(res, overview(me.owner ? 0 : me.id));
     if (p === '/api/jobs') return json(res, jobList(q));
     if (p === '/api/tracks') return json(res, trackSummary());
-    if (p === '/api/tiers') return json(res, tierSummary());
+    if (p === '/api/tiers') return json(res, tierSummary(me.owner ? 0 : me.id));
     if (p.startsWith('/api/apply/') && p.endsWith('/pack')) {
       const { applyPack } = await import('../jobs/autofill.mjs');
       const pack = applyPack(p.split('/')[3]);
       return pack ? json(res, pack) : json(res, { error: 'not found' }, 404);
     }
     if (p === '/api/deeplinks') return json(res, deepLinks());
+    // In shared mode every one of these reads the ASKING user's profile. The gate alone was not
+    // enough: it stopped strangers, but a signed-in friend was still served the owner's resume,
+    // salary band and work-authorisation status, because the handlers read the files on disk.
+    if (p === '/api/config') {
+      const mine = profileFor(me.owner ? 0 : me.id);
+      return json(res, { candidate: mine.candidate, money: mine.money });
+    }
+
     if (p === '/api/profile') {
       const { scoreTracks, gaps } = await import('../jobs/resume.mjs');
-      const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
+      const mine = profileFor(me.owner ? 0 : me.id);
+      const master = mine.master || {};
+      // scoreTracks() and gaps() read the owner's file, so they are only meaningful for the owner.
+      // A signed-in friend with an empty fact bank gets empty results rather than the owner's.
+      const own = !!me.owner;
       return json(res, {
-        scores: scoreTracks(),
-        gaps: gaps(),
+        scores: own ? scoreTracks() : scoreTracksFor(master, mine.candidate),
+        gaps: own ? gaps() : [],
         uploads: (master.uploads || []).map((u) => ({ file: u.file, chars: u.chars, addedAt: u.addedAt })),
         answered: (master.ownerStated || []).map((f) => ({ track: f.track, key: f.key, question: f.question, answer: f.answer })),
-        identity: master.identity,
+        identity: master.identity || mine.candidate?.identity || {},
+        readiness: profileReadiness(own ? 0 : me.id),
       });
     }
     if (p === '/api/near-miss') return json(res, nearMiss());
-    if (p === '/api/money') return json(res, moneyState(q.month || new Date().toISOString().slice(0, 7)));
-    if (p === '/api/config') return json(res, { candidate: cfg('candidate.json'), money: cfg('money.json') });
+    if (p === '/api/money') return json(res, moneyState(q.month || new Date().toISOString().slice(0, 7), me.owner ? 0 : me.id));
 
     if (p.startsWith('/api/job/')) {
       const d = jobDetail(p.split('/')[3]);
@@ -416,6 +562,12 @@ const server = createServer(async (req, res) => {
     // Packet files, served read-only and confined to the packet directory.
     if (p.startsWith('/packet/')) {
       const [, , id, ...rest] = p.split('/');
+      // A packet holds a real resume with a real phone number on it. Ownership is checked against
+      // the applications row, not against whoever happens to be signed in.
+      if (!me.owner) {
+        const owns = D.prepare('SELECT 1 FROM applications WHERE job_id = ? AND user_id = ?').get(Number(id), me.id);
+        if (!owns) return json(res, { error: 'not found' }, 404);
+      }
       const rel = normalize(rest.join('/')).replace(/^(\.\.[/\\])+/, '');
       const dir = join(ROOT, 'data', 'applications', String(Number(id)));
       const file = join(dir, rel);
@@ -446,6 +598,7 @@ const server = createServer(async (req, res) => {
     // typing the command would be. It never sends anything: there is no outbound call in this file
     // and there must never be one.
     if (p.startsWith('/api/client/') && p.endsWith('/sent') && req.method === 'POST') {
+      if (!me.owner) return json(res, { error: 'not found' }, 404);
       const id = Number(p.split('/')[3]);
       const m = db().prepare('SELECT * FROM messages WHERE id=?').get(id);
       if (!m) return json(res, { error: 'no such message' }, 404);
@@ -464,14 +617,24 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST') {
       const b = await body(req);
 
+      // Money writes go through the ledger CLI, which has no notion of accounts, so the rows it
+      // creates are stamped with the caller afterwards. Doing it here keeps one writer of truth.
+      const stampMoney = () => { if (!me.owner) {
+        for (const t of ['budget_months', 'envelopes', 'transactions', 'money_goals']) {
+          D.prepare(`UPDATE ${t} SET user_id = ? WHERE user_id = 0`).run(me.id);
+        }
+      } };
+
       if (p === '/api/money/plan') {
         const r = await runSync(['src/money/ledger.mjs', 'plan', `--month=${b.month}`, `--amount=${Number(b.amount)}`]);
+        stampMoney();
         return json(res, { ok: r.code === 0, out: r.out });
       }
       if (p === '/api/money/spend') {
         const args = ['src/money/ledger.mjs', 'spend', `--envelope=${b.envelope}`, `--amount=${Number(b.amount)}`, `--month=${b.month}`];
         if (b.note) args.push(`--note=${b.note}`);
         const r = await runSync(args);
+        stampMoney();
         return json(res, { ok: r.code === 0, out: r.out });
       }
       if (p === '/api/money/goal') {
@@ -479,6 +642,7 @@ const server = createServer(async (req, res) => {
           ? ['src/money/ledger.mjs', 'goal', 'fund', `--name=${b.name}`, `--amount=${Number(b.amount)}`]
           : ['src/money/ledger.mjs', 'goal', 'add', `--name=${b.name}`, `--target=${Number(b.target)}`, ...(b.by ? [`--by=${b.by}`] : [])];
         const r = await runSync(args);
+        stampMoney();
         return json(res, { ok: r.code === 0, out: r.out });
       }
       if (p === '/api/money/offer') {
@@ -550,6 +714,18 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\n  Job Hunter\n  http://${HOST}:${PORT}\n`);
-  console.log(`  Bound to localhost only. Nothing here submits an application.\n`);
+  const pruned = pruneSessions();
+  console.log(`\n  Job Hunter`);
+  if (SHARE) {
+    const n = db().prepare('SELECT COUNT(*) n FROM users').get().n;
+    console.log(`  http://${HOST}:${PORT}   SHARED MODE`);
+    console.log(`\n  Every route requires a login. ${n} account${n === 1 ? '' : 's'}.`);
+    if (!n) console.log(`  No accounts yet: node src/users.mjs create --email=you@example.com`);
+    console.log(`  Put this behind a tunnel to share it. Do not open the port directly.`);
+  } else {
+    console.log(`  http://127.0.0.1:${PORT}\n`);
+    console.log(`  Localhost only, no login. Run with SHARE=1 to let other people in.`);
+  }
+  if (pruned) console.log(`  (${pruned} expired session${pruned === 1 ? '' : 's'} cleared)`);
+  console.log(`\n  Nothing here submits an application.\n`);
 });
