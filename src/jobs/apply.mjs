@@ -10,7 +10,7 @@
 //   node src/jobs/apply.mjs review  --job=42     the one-screen read before you decide
 //   node src/jobs/apply.mjs approve --job=42     you, saying yes. Only you run this.
 //   node src/jobs/apply.mjs applied --job=42     record that you actually sent it
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, db, now, logEvent } from '../db.mjs';
 import { renderOnePage } from './render.mjs';
@@ -19,6 +19,7 @@ import { researchJob } from './research.mjs';
 import { loomJob } from './loom.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
+const flag = (n) => process.argv.includes(`--${n}`);
 const cmd = process.argv[2];
 const D = db();
 
@@ -50,22 +51,33 @@ function init(id, { quiet = false } = {}) {
   // The agent still does the real tailoring; this just means a media-buying packet does not open
   // with Kubernetes, and the skills the posting actually names are already at the front.
   const jdWords = new Set((job.content || '').toLowerCase().match(/[a-z][a-z0-9+.#-]{2,}/g) || []);
-  const TRACK_SKILLS = {
-    dev: ['JavaScript', 'React', 'Node.js', 'HTML', 'CSS', 'SQL / MySQL', 'MongoDB', 'Python', 'Git', 'Agile process'],
-    ai: ['Generative AI', 'Large Language Models', 'AI Agents', 'Prompt Engineering', 'AI Automation',
-         'Information Extraction', 'Python', 'JavaScript', 'Node.js'],
-    marketing: ['Meta / Facebook Ads', 'Google Ads', 'Performance marketing', 'Campaign analysis',
-                'Client communication', 'Consultative problem-solving', 'SEO', 'Analytics'],
-    game: ['Unity', 'JavaScript', 'C#', 'Game prototyping', 'Problem solving'],
-  };
-  const pool = TRACK_SKILLS[job.track] || TRACK_SKILLS.dev;
-  // Skills the posting itself mentions come first; the rest keep their order behind them.
-  const skills = [...pool].sort((a, b) => {
-    const hit = (x) => (x.toLowerCase().split(/[^a-z]+/).some((w) => w.length > 2 && jdWords.has(w)) ? 0 : 1);
-    return hit(a) - hit(b);
-  }).slice(0, 12);
+  // Skills come from the fact bank, never from a list in this file.
+  //
+  // A hardcoded per-track list was putting "Python" and "SQL / MySQL" on every dev packet because
+  // the list said so, not because any resume did. That is the invention rule being broken by the
+  // seeding code itself, which is worse than an agent doing it: it is silent and it is everywhere.
+  const bankSkills = Object.entries(master.skills || {})
+    .filter(([k, v]) => k !== 'source' && Array.isArray(v))
+    .flatMap(([, v]) => v)
+    .filter((x, i, a) => a.indexOf(x) === i);
 
-  if (!existsSync(seed)) {
+  // The posting decides the ORDER, the fact bank decides the CONTENT. Same theme every time; what
+  // leads changes with the job.
+  const relevance = (skill) => {
+    const words = String(skill).toLowerCase().split(/[^a-z0-9+#.]+/).filter((w) => w.length > 1);
+    return words.some((w) => jdWords.has(w)) ? 0 : 1;
+  };
+  const skills = [...bankSkills].sort((a, b) => relevance(a) - relevance(b)).slice(0, 12);
+
+  // Refresh the seed when the fact bank is newer than it, or when asked.
+  //
+  // This used to be "write only if missing", which meant uploading a new resume changed nothing for
+  // the packets already on disk: they kept quoting a profile line and a skill list the owner had
+  // replaced. A packet is a view of the fact bank, so a newer bank wins.
+  const bankNewer = existsSync(seed)
+    && statSync(join(ROOT, 'data', 'resume', 'master.json')).mtimeMs > statSync(seed).mtimeMs;
+
+  if (!existsSync(seed) || bankNewer || flag('force')) {
     // Seeded straight from the fact bank. The tailorer edits this down; it never adds to it.
     writeFileSync(seed, JSON.stringify({
       _instructions: 'Select and rephrase from data/resume/master.json ONLY. Every bullet must trace to a fact there. Do not invent employers, dates, metrics or skills.',

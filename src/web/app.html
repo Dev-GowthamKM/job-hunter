@@ -865,6 +865,14 @@ async function openJob(id, { apply = false } = {}) {
       ${f('Tailored resume (PDF)', pk?.resumePdf || 'x', pk?.resumePdf)}
       ${f('Loom script', 'loom/script.md', pk?.loomScript)}
       ${f('Loom slides', 'loom/slides.html', pk?.loomSlides)}
+      ${pk?.loomSlides ? `<div class="file" style="gap:8px">
+        <span>Download the deck</span>
+        <span style="display:flex;gap:8px">
+          <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
+             href="/api/slides/${id}/pdf" download>PDF</a>
+          <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
+             href="/api/slides/${id}/pptx" download>PowerPoint</a>
+        </span></div>` : ''}
       ${f('Recording checklist', 'loom/checklist.md', pk?.loomChecklist)}
       ${f('Job description', 'job.txt', pk?.jobText)}
     </div>
@@ -1336,6 +1344,13 @@ $('#gate-form').onsubmit = async (e) => {
 
 async function boot() {
   SESSION = await api('/api/session');
+
+  // This is a job hunter. The client-lead arm came from the project it grew out of, and unless it
+  // is switched on in config/candidate.json its tab does not belong in the navigation.
+  const arms = SESSION.arms || { clients: false };
+  if (!arms.clients) document.querySelectorAll('[data-v="clients"]').forEach((b) => b.remove());
+  if (arms.money === false) document.querySelectorAll('[data-v="money"]').forEach((b) => b.remove());
+
   if (SESSION.share && !SESSION.signedIn) {
     $('#gate').hidden = false;
     paintGate();
@@ -1352,7 +1367,9 @@ async function boot() {
     const so = $('#signout');
     if (so) so.onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload(); };
   }
-  show(location.hash.slice(1) || 'overview');
+  const wanted = location.hash.slice(1) || 'overview';
+  const exists = document.querySelector(`[data-v="${wanted}"]`);
+  show(exists ? wanted : 'overview');
   refreshCounts();
 }
 boot();

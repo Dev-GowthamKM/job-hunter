@@ -452,9 +452,11 @@ const server = createServer(async (req, res) => {
 
     // ── auth routes ───────────────────────────────────────────────────────
     if (p === '/api/session') {
+      const arms = (profileFor(me && me.owner ? 0 : me?.id || 0).candidate || {}).arms
+        || { jobs: true, money: true, clients: false };
       return json(res, me
-        ? { signedIn: true, user: { id: me.id, email: me.email, name: me.name }, share: SHARE, readiness: profileReadiness(me.id) }
-        : { signedIn: false, share: SHARE });
+        ? { signedIn: true, user: { id: me.id, email: me.email, name: me.name }, share: SHARE, arms, readiness: profileReadiness(me.id) }
+        : { signedIn: false, share: SHARE, arms });
     }
 
     if (p === '/api/login' && req.method === 'POST') {
@@ -515,12 +517,39 @@ const server = createServer(async (req, res) => {
     // empty shell still tells a visitor it is there.
     if (p === '/api/clients') {
       if (!me.owner) return json(res, { error: 'not found' }, 404);
+      const armed = (profileFor(0).candidate || {}).arms?.clients;
+      if (armed === false) return json(res, { error: 'not found' }, 404);
       return json(res, clients());
     }
     if (p === '/api/overview') return json(res, overview(me.owner ? 0 : me.id));
     if (p === '/api/jobs') return json(res, jobList(q));
     if (p === '/api/tracks') return json(res, trackSummary());
     if (p === '/api/tiers') return json(res, tierSummary(me.owner ? 0 : me.id));
+    // Slide exports are generated on demand rather than on every packet build, because Chrome
+    // takes a couple of seconds per deck and most decks are never downloaded.
+    if (p.startsWith('/api/slides/')) {
+      const [, , , id, format] = p.split('/');
+      if (!['pdf', 'pptx'].includes(format)) return json(res, { error: 'pdf or pptx' }, 400);
+      if (!me.owner) {
+        const owns = D.prepare('SELECT 1 FROM applications WHERE job_id = ? AND user_id = ?').get(Number(id), me.id);
+        if (!owns) return json(res, { error: 'not found' }, 404);
+      }
+      try {
+        const { toPdf, toPptx } = await import('../jobs/slides-export.mjs');
+        const file = format === 'pptx' ? toPptx(Number(id)) : toPdf(Number(id));
+        const buf = readFileSync(file);
+        res.writeHead(200, {
+          'content-type': format === 'pptx'
+            ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            : 'application/pdf',
+          'content-disposition': `attachment; filename="slides.${format}"`,
+        });
+        return res.end(buf);
+      } catch (e) {
+        return json(res, { error: e.message }, 500);
+      }
+    }
+
     if (p.startsWith('/api/apply/') && p.endsWith('/pack')) {
       const { applyPack } = await import('../jobs/autofill.mjs');
       const pack = applyPack(p.split('/')[3]);

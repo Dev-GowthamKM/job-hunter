@@ -287,5 +287,11 @@
     "revenue share only",
     "security clearance",
     "must relocate"
-  ]
+  ],
+  "arms": {
+    "_comment": "Which arms of the system appear in the dashboard. The job hunt is the point; the others are optional and off by default. Turning clients off hides the tab - it does not delete anything, and `npm run scout` still works from the terminal.",
+    "jobs": true,
+    "money": true,
+    "clients": false
+  }
 }
