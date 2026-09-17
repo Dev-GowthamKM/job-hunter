@@ -152,6 +152,27 @@ window.fetch = async (input, init = {}) => {
   const reply = (body) => new Response(JSON.stringify(body),
     { status: 200, headers: { 'content-type': 'application/json' } });
 
+  // Running the pipeline is streamed, so it needs a stream back.
+  //
+  // Handing this path a plain JSON body was worse than an error: the reader found no SSE frames,
+  // hit end-of-stream, and called onDone(0) - so the button reported instant success and printed
+  // nothing. A visitor clicking "Search for new jobs" got no output, no error and no explanation,
+  // which reads as broken software. Answer in the protocol the caller expects, and say the true
+  // thing in it.
+  if (url.startsWith('/api/run/')) {
+    const say = (ev, data) => \`event: \${ev}\ndata: \${JSON.stringify(data)}\n\n\`;
+    const body = say('line', 'This is the public demo, so it cannot go out to the job boards.')
+      + say('line', '')
+      + say('line', 'A real run polls 84 boards, screens about 16,000 postings and takes around')
+      + say('line', 'two hours. It writes to a database on the machine it runs on, which a page')
+      + say('line', 'served from GitHub Pages does not have.')
+      + say('line', '')
+      + say('line', 'The jobs already on this page were produced by exactly that pipeline.')
+      + say('line', 'To run it yourself: clone the repo, then npm run setup && npm run hunt')
+      + say('done', { code: 0 });
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  }
+
   if ((init.method || 'GET').toUpperCase() !== 'GET') {
     // Writes are the one place a demo must not pretend. Recording an approval or a spend as if it
     // had happened would be teaching the page to lie about the only thing this system guards.
@@ -200,6 +221,11 @@ const bar = `
   ${repoUrl ? `<a href="https://github.com/${repoUrl}">Source on GitHub</a>` : ''}
 </div>
 `;
+
+// The console starts hidden behind a "Show raw output" toggle, which is right for a real run and
+// wrong here: on the demo that box IS the answer.
+html = html.replace('<div class="console" id="console" style="margin-top:12px" hidden>Idle.</div>',
+                    '<div class="console" id="console" style="margin-top:12px">Idle.</div>');
 
 html = html.replace('</head>', shim + '</head>');
 html = html.replace(/<body([^>]*)>/, (m) => m + bar);
