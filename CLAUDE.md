@@ -198,6 +198,23 @@ run` injects twenty `npm_config_*` variables, and undici reads proxy settings ou
 environment; the probe reported "not answering" while the server was serving on that exact port.
 A health check for a socket on this machine should not be reroutable by an environment variable.
 
+# Layer 2 runs itself now
+
+`src/jobs/adjudicate.mjs` reads the postings the deterministic filter could not decide and rules on
+them, quoting the posting exactly as `verdict.mjs` demands. `daily.mjs` calls it after hunt and
+score, capped at 40 postings a run, and every run prints its own token count and dollar cost.
+
+Three things about it that are deliberate:
+
+- **No API key is not an error.** It prints why and exits 0, because the nightly collection must not
+  fail over an optional step. A run where *every* call fails does exit 1 — that is a wrong key or a
+  dead model name, not flakiness.
+- **The key is read from `.env`, never the shell.** launchd inherits no shell environment, so a key
+  in `.zshrc` would mean layer 2 silently skipped itself every night.
+- **It records a verdict and nothing else.** No apply, no send, no approve. A model reading job
+  descriptions overnight is useful; a model deciding to submit an application is the failure this
+  system exists to prevent, and a scheduled task is the worst possible place to allow it.
+
 # An empty panel is a lie
 
 `show()` called each tab's async loader without awaiting it and without a `.catch`, so any throw

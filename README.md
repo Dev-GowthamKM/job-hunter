@@ -145,6 +145,23 @@ The same database and the same approval gate carry two smaller systems:
   actually worth after tax. It moves no money and gives no investment advice, by design: there is no
   brokerage integration and no bank credential anywhere in the repo.
 
+## Layer 2: the part that reads
+
+The deterministic filter settles the obvious cases for free. What survives is the residue —
+postings that never said where the person has to be — and silence is a reading problem, not a
+pattern-matching one.
+
+```bash
+npm run adjudicate -- --dry-run     # see the rulings, write nothing
+npm run adjudicate                  # rule on up to 40, quoting each posting
+```
+
+It runs automatically after the daily collection when `ANTHROPIC_API_KEY` is set in `.env`, and
+skips itself cleanly when it is not. Each run prints its token count and cost.
+
+It records a verdict and nothing else. There is no apply, no send and no approve in it, and there
+never will be.
+
 ## The demo
 
 `npm run demo` writes `docs/`, which is what GitHub Pages serves.

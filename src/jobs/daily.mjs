@@ -32,6 +32,13 @@ const hunt = step('hunt', ['src/jobs/hunt.mjs']);
 // half a collection scored is more useful than half a collection ignored.
 const score = step('score', ['src/jobs/score.mjs']);
 
-logEvent('daily_run', { hunt: hunt.ok, huntSecs: hunt.secs, score: score.ok, scoreSecs: score.secs });
-console.log(`\nDaily update ${hunt.ok && score.ok ? 'complete' : 'finished with errors'}.`);
-process.exit(hunt.ok && score.ok ? 0 : 1);
+// Layer 2: read the postings layer 1 could not decide. Costs money, so it is capped per run and
+// skips itself entirely when no API key is set. Its failure must never fail the night - the
+// collection is the part that cannot be redone later, and this can always be run again by hand.
+const judge = step('adjudicate', ['src/jobs/adjudicate.mjs', '--limit=40']);
+
+logEvent('daily_run', { hunt: hunt.ok, huntSecs: hunt.secs, score: score.ok, scoreSecs: score.secs,
+                        adjudicate: judge.ok, adjudicateSecs: judge.secs });
+const core = hunt.ok && score.ok;
+console.log(`\nDaily update ${core ? 'complete' : 'finished with errors'}${core && !judge.ok ? ', but layer 2 failed' : ''}.`);
+process.exit(core ? 0 : 1);

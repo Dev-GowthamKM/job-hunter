@@ -33,6 +33,8 @@
     "packets": "node --no-warnings=ExperimentalWarning src/jobs/apply.mjs batch --tier=all --limit=60",
     "users": "node --no-warnings=ExperimentalWarning src/users.mjs",
     "demo": "node --no-warnings=ExperimentalWarning src/web/demo/build.mjs",
-    "service": "node --no-warnings=ExperimentalWarning src/service.mjs"
+    "service": "node --no-warnings=ExperimentalWarning src/service.mjs",
+    "adjudicate": "node --no-warnings=ExperimentalWarning src/jobs/adjudicate.mjs",
+    "daily": "node --no-warnings=ExperimentalWarning src/jobs/daily.mjs"
   }
 }
