@@ -32,6 +32,7 @@
     "dashboard": "node --no-warnings=ExperimentalWarning src/dashboard/server.mjs",
     "packets": "node --no-warnings=ExperimentalWarning src/jobs/apply.mjs batch --tier=all --limit=60",
     "users": "node --no-warnings=ExperimentalWarning src/users.mjs",
-    "demo": "node --no-warnings=ExperimentalWarning src/web/demo/build.mjs"
+    "demo": "node --no-warnings=ExperimentalWarning src/web/demo/build.mjs",
+    "service": "node --no-warnings=ExperimentalWarning src/service.mjs"
   }
 }

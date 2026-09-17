@@ -110,6 +110,21 @@ npm run web      # http://127.0.0.1:4321
 Node 22+ and Google Chrome (which renders the PDFs). Nothing to install. Full walkthrough in
 [SETUP.md](SETUP.md).
 
+### Keeping it running
+
+```bash
+npm run service install     # starts now, and at every login
+npm run service status      # installed / registered / actually answering
+npm run service restart     # after changing the code
+npm run service logs
+npm run service uninstall
+```
+
+A launchd **user agent**, not a daemon — a daemon runs as root before anyone logs in, and this
+process reads one person's resume and budget out of their home directory. launchd restarts it if it
+crashes and starts it again at login, so it survives reboots and closing the terminal. It cannot
+survive the Mac sleeping, because nothing running on the Mac can. It stays bound to `127.0.0.1`.
+
 `config/candidate.json` drives everything — the tracks you search, the salary bands per track, the
 seniority rules and the eligibility mode. `data/resume/master.json` is the fact bank: the resume
 tailorer may select, reorder and reword from it, and may never add to it.

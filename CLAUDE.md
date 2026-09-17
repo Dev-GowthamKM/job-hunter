@@ -178,6 +178,15 @@ that endpoint would be the failure mode this whole system is shaped to prevent.
 Bound to 127.0.0.1 with no auth, because there is no listener anyone else can reach. Do not add a
 `0.0.0.0` bind or a tunnel without adding authentication first.
 
+`npm run service install` keeps it up: a launchd **user agent**, not a daemon, because this process
+reads the owner's resume and budget out of their home directory and should run as them. Verified by
+`kill -9`, not by reading the plist — launchd brought it back with a new PID.
+
+The health probe in `src/service.mjs` uses `node:http`, not `fetch`, and must stay that way. `npm
+run` injects twenty `npm_config_*` variables, and undici reads proxy settings out of the
+environment; the probe reported "not answering" while the server was serving on that exact port.
+A health check for a socket on this machine should not be reroutable by an environment variable.
+
 # Performance, earned the hard way
 
 `jobs.content` carries up to 20KB per row. Sorting on an unindexed column therefore makes SQLite do
