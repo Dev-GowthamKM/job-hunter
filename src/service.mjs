@@ -29,8 +29,8 @@ const PLIST = join(homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
 const LOGDIR = join(homedir(), 'Library', 'Logs', 'job-hunter');
 const LOG = join(LOGDIR, 'dashboard.log');
 
-// The second agent: the daily collection. Separate from the dashboard on purpose - a hunt takes
-// about fourteen minutes and must not be able to take the dashboard down with it when it fails.
+// The second agent: the daily collection. Separate from the dashboard on purpose - a hunt runs
+// for hours and must not be able to take the dashboard down with it when it fails.
 const HUNT_LABEL = 'com.jobhunter.daily';
 const HUNT_PLIST = join(homedir(), 'Library', 'LaunchAgents', `${HUNT_LABEL}.plist`);
 const HUNT_LOG = join(LOGDIR, 'daily.log');
@@ -102,8 +102,8 @@ function huntPlist(hour, minute) {
   <key>WorkingDirectory</key><string>${esc(ROOT)}</string>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>${hour}</integer><key>Minute</key><integer>${minute}</integer></dict>
-  <!-- Not RunAtLoad. This is a fourteen-minute job that hits several dozen job boards; firing it
-       every time someone logs in would be rude to those boards and useless to the owner. -->
+  <!-- Not RunAtLoad. This is a two-hour job that hits several dozen job boards; firing it every
+       time someone logs in would be rude to those boards and useless to the owner. -->
   <key>RunAtLoad</key><false/>
   <!-- Not KeepAlive either. This one is supposed to finish. KeepAlive on a task that exits is an
        infinite loop against other people's APIs. -->
@@ -223,7 +223,8 @@ if (cmd === 'install') {
     process.exit(1);
   }
   const hh = String(hour).padStart(2, '0'), mm = String(minute).padStart(2, '0');
-  console.log(`Collecting every day at ${hh}:${mm}. About fourteen minutes; it collects and scores.`);
+  console.log(`Collecting every day at ${hh}:${mm}. It collects and scores.`);
+  console.log(`Budget about two hours: a measured full run took 124 minutes over 16,614 postings.`);
   console.log(`If the Mac is asleep at ${hh}:${mm}, launchd runs it when the Mac next wakes.`);
   console.log(`It never applies to anything. That still needs you.`);
   console.log(`Logs: ${HUNT_LOG}`);
@@ -237,7 +238,7 @@ if (cmd === 'install') {
 } else if (cmd === 'hunt-now') {
   if (!existsSync(HUNT_PLIST)) { console.error('Not scheduled yet. Run: npm run service schedule'); process.exit(1); }
   launchctl('kickstart', `${TARGET}/${HUNT_LABEL}`);
-  console.log(`Started. It takes about fourteen minutes.`);
+  console.log(`Started. A measured full run took about two hours.`);
   console.log(`Watch it:  tail -f ${HUNT_LOG}`);
 
 } else if (cmd === 'uninstall') {

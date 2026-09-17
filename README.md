@@ -114,7 +114,7 @@ Node 22+ and Google Chrome (which renders the PDFs). Nothing to install. Full wa
 
 ```bash
 npm run service install                 # dashboard: starts now, and at every login
-npm run service schedule --at=07:00     # collect every day, automatically
+npm run service schedule --at=07:00     # collect every day (measured: ~2 hours a run)
 npm run service hunt-now                # run one immediately
 npm run service status                  # both agents, and when the last collection ran
 npm run service restart / logs / unschedule / uninstall

@@ -181,7 +181,7 @@ Bound to 127.0.0.1 with no auth, because there is no listener anyone else can re
 `npm run service schedule` adds a second agent that runs `src/jobs/daily.mjs` (hunt, then score) on
 a `StartCalendarInterval`. It is deliberately not `KeepAlive` — that flag on a task which is meant
 to exit is an infinite loop against other people's job boards — and deliberately not `RunAtLoad`,
-which would fire a fourteen-minute crawl every time someone logs in. **It must never apply to
+which would fire a two-hour crawl every time someone logs in. **It must never apply to
 anything.** A scheduled task is the worst possible place to weaken the approval gate.
 
 `launchctl bootout` returns before the job is actually gone. Bootstrapping straight after it races
@@ -283,9 +283,14 @@ loosening the filter behind his back.
 Workable reports `totalSize` per query and serves 20 at a time. The first version took page one:
 20 of 2,999 AI-engineer postings, 0.7% of what existed, and then the work-from-anywhere filter was
 blamed for finding nothing. Sources paginate deeply now — Workable 8 pages per track title,
-Himalayas 40 cursor pages. A deep run is ~16,000 postings and takes about 14 minutes.
+Himalayas 40 cursor pages. A deep run is ~16,000 postings.
 
 **Before concluding a filter is too strict, check what the sources actually returned.**
+
+**A full run takes about two hours, not fourteen minutes.** Measured 2026-09-17: 7,448 seconds over
+16,614 postings, 451 of them new. The old "14 minutes" figure in these notes was wrong and was
+being repeated to the owner by `npm run service schedule`. It is CPU-bound while it runs - regex
+screening and per-row SQLite writes - not blocked on the network.
 
 # Boards disagree about what a date is
 
