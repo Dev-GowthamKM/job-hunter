@@ -180,6 +180,9 @@ window.fetch = async (input, init = {}) => {
 #demobar span { overflow: hidden; text-overflow: ellipsis; }
 #demobar a { color: #16233a; margin-left: auto; padding-left: 14px; font-weight: 600; }
 body { padding-top: 36px; box-sizing: border-box; }
+/* On a phone the sentence truncates and takes the link with it, because the link is pushed right
+   by margin-left:auto. The link is the more useful half, so the sentence is what goes. */
+@media (max-width: 700px) { #demobar span { display: none; } }
 </style>
 `;
 

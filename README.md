@@ -7,6 +7,12 @@ rules, and generates complete application packets — research dossier, tailored
 **Zero runtime dependencies.** Node 22+, `node:sqlite`, and the copy of Chrome already on the
 machine. No npm install.
 
+### [Open the live demo →](https://dev-gowthamkm.github.io/job-hunter/)
+
+The real dashboard, running on an invented candidate and invented postings. Read-only, no sign-in,
+nothing to install. Open a job to see the packet it builds: research dossier, tailored one-page
+resume, 90-second script, slide deck.
+
 ```bash
 npm run web        # dashboard at http://127.0.0.1:4321
 npm run hunt       # ~16,000 postings across 80+ boards
