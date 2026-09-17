@@ -511,7 +511,14 @@ function show(v) {
   $$('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
   $$('.view').forEach((s) => s.classList.toggle('on', s.id === `v-${v}`));
   location.hash = v;
-  LOAD[v]?.();
+  // Every loader is async and this call is not awaited, so before this catch a throw anywhere in
+  // one of them rejected into nothing: no error, no log, just a tab that stayed empty. An empty
+  // dashboard is indistinguishable from a dashboard that lost your data, which is the worst thing
+  // it could imply. Say what happened instead.
+  Promise.resolve(LOAD[v]?.()).catch((err) => {
+    console.error(`Loading "${v}" failed:`, err);
+    toast(`Could not load ${v}. ${err.message || err}`);
+  });
 }
 $('#nav').onclick = (e) => { const b = e.target.closest('button[data-v]'); if (b) show(b.dataset.v); };
 
@@ -746,7 +753,29 @@ async function loadJobs(append = false) {
   if (!append) jobOffset = 0;
   const p = filters();
   p.set('offset', jobOffset);
-  const r = await api('/api/jobs?' + p);
+
+  // A cold server can take a few seconds on the first query, and for that whole time this list was
+  // blank with an empty subtitle - which reads as "there are no jobs", not as "still loading".
+  if (!append) {
+    $('#jobs-sub').textContent = 'Loading…';
+    $('#jobs-list').innerHTML = '<div class="card" style="opacity:.6">Loading jobs…</div>';
+  }
+
+  let r;
+  try {
+    r = await api('/api/jobs?' + p);
+  } catch (err) {
+    $('#jobs-sub').textContent = 'Could not load jobs';
+    $('#jobs-list').innerHTML = `<div class="card">Could not reach the server. ${esc(err.message || err)}
+      <div style="margin-top:8px"><button class="act" onclick="loadJobs()">Try again</button></div></div>`;
+    return;
+  }
+  if (!r || !Array.isArray(r.rows)) {
+    $('#jobs-sub').textContent = 'Could not load jobs';
+    $('#jobs-list').innerHTML = `<div class="card">The server answered, but not with a job list.
+      ${esc(JSON.stringify(r).slice(0, 200))}</div>`;
+    return;
+  }
 
   $('#jobs-sub').textContent = `${r.total} match your filters`;
   const html = r.rows.map((j) => `

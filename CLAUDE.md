@@ -178,6 +178,17 @@ that endpoint would be the failure mode this whole system is shaped to prevent.
 Bound to 127.0.0.1 with no auth, because there is no listener anyone else can reach. Do not add a
 `0.0.0.0` bind or a tunnel without adding authentication first.
 
+`npm run service schedule` adds a second agent that runs `src/jobs/daily.mjs` (hunt, then score) on
+a `StartCalendarInterval`. It is deliberately not `KeepAlive` — that flag on a task which is meant
+to exit is an infinite loop against other people's job boards — and deliberately not `RunAtLoad`,
+which would fire a fourteen-minute crawl every time someone logs in. **It must never apply to
+anything.** A scheduled task is the worst possible place to weaken the approval gate.
+
+`launchctl bootout` returns before the job is actually gone. Bootstrapping straight after it races
+the unload, fails, and leaves nothing registered — no process, no agent, and an install that
+reported success. `src/service.mjs` polls until the old job is really gone, and afterwards trusts
+the registration rather than the exit code.
+
 `npm run service install` keeps it up: a launchd **user agent**, not a daemon, because this process
 reads the owner's resume and budget out of their home directory and should run as them. Verified by
 `kill -9`, not by reading the plist — launchd brought it back with a new PID.
@@ -186,6 +197,16 @@ The health probe in `src/service.mjs` uses `node:http`, not `fetch`, and must st
 run` injects twenty `npm_config_*` variables, and undici reads proxy settings out of the
 environment; the probe reported "not answering" while the server was serving on that exact port.
 A health check for a socket on this machine should not be reroutable by an environment variable.
+
+# An empty panel is a lie
+
+`show()` called each tab's async loader without awaiting it and without a `.catch`, so any throw
+inside one rejected into nothing: no error, no console line, just a tab that stayed blank. The Jobs
+list also painted nothing at all while its request was in flight. Together those read as "the
+system lost all your data", which is the worst thing a dashboard can imply and was never true.
+
+Loaders now report failures through `toast()`, and the jobs list says `Loading…` and then either
+the rows, the empty state, or the error with a retry.
 
 # Performance, earned the hard way
 

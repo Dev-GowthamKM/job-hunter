@@ -113,17 +113,23 @@ Node 22+ and Google Chrome (which renders the PDFs). Nothing to install. Full wa
 ### Keeping it running
 
 ```bash
-npm run service install     # starts now, and at every login
-npm run service status      # installed / registered / actually answering
-npm run service restart     # after changing the code
-npm run service logs
-npm run service uninstall
+npm run service install                 # dashboard: starts now, and at every login
+npm run service schedule --at=07:00     # collect every day, automatically
+npm run service hunt-now                # run one immediately
+npm run service status                  # both agents, and when the last collection ran
+npm run service restart / logs / unschedule / uninstall
 ```
 
 A launchd **user agent**, not a daemon — a daemon runs as root before anyone logs in, and this
 process reads one person's resume and budget out of their home directory. launchd restarts it if it
 crashes and starts it again at login, so it survives reboots and closing the terminal. It cannot
 survive the Mac sleeping, because nothing running on the Mac can. It stays bound to `127.0.0.1`.
+
+**Nothing collects on its own until you schedule it.** The dashboard reads the database; it never
+goes out to the boards. Until `npm run service schedule` is run, the job count on the front page is
+a snapshot of the last manual hunt and will not change. The scheduled agent collects and scores,
+and it does not apply to anything — a scheduled task is the worst possible place to weaken the
+approval gate.
 
 `config/candidate.json` drives everything — the tracks you search, the salary bands per track, the
 seniority rules and the eligibility mode. `data/resume/master.json` is the fact bank: the resume
