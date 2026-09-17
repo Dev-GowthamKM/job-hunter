@@ -302,7 +302,44 @@ Workable reports `totalSize` per query and serves 20 at a time. The first versio
 blamed for finding nothing. Sources paginate deeply now — Workable 8 pages per track title,
 Himalayas 40 cursor pages. A deep run is ~16,000 postings.
 
-**Before concluding a filter is too strict, check what the sources actually returned.**
+**Before concluding a filter is too strict, check what the sources actually returned.** A source
+returning 0 now prints `<-- NOTHING` and logs `hunt_empty_source`, because that line is the whole
+warning and it used to be invisible.
+
+# Concurrency got this IP rate-limited, and the error was silent
+
+The global sources ran one after another and Workable issued 67 searches sequentially, 8 pages deep
+- 536 round trips, and most of a two-hour run. Pooling them cut a full run to under two minutes.
+
+At concurrency 5 Workable answered **429 and locked the IP out for 24 hours**. Three things were
+wrong, and only the first was the one I introduced:
+
+- `fetchWithRetry` treated 429 exactly like a 500: three attempts, 1.2s apart. The response to
+  being told to slow down was to send three times as many requests. 429 now throws `RateLimited`
+  immediately and is never retried.
+- `search()` in workable.mjs did `catch { break }`, so a rate limit read as "no more pages". The
+  source returned **zero postings and the hunt printed `errors 0`**. One 429 now aborts the whole
+  source loudly.
+- Retirement trusted any sweep. A run dropped from 16,283 postings to 12,003 without raising a
+  single error; the same collapse on a company board would have retired thousands of live jobs.
+  A source that sees under half of what is already held now retires nothing.
+
+Workable concurrency is **2**, which is measurably faster than sequential and stayed under the
+limit. The number is empirical. Raise it only with evidence.
+
+# Closed postings: absence from the board, not a dead link
+
+Fetching a posting's own page does not work. Railway serves a 1.2KB SPA shell whether the job is
+live or two years dead, Workable-hosted pages answer 403, and no two boards agree on the wording of
+"no longer accepting applications". Every one of those returns HTTP 200.
+
+`retireMissing()` uses the only reliable signal: Greenhouse, Lever and Ashby return a company's
+COMPLETE board, so a posting that was there yesterday and is gone today has been taken down. Two
+consecutive misses, so one bad morning does not retire a company. Query-driven sources are excluded
+on purpose - a live job can fall off Workable's eighth page because thirty newer ones appeared, and
+absence there means nothing.
+
+First real sweep retired **150** postings, the oldest from 2025.
 
 **A full run takes about two hours, not fourteen minutes.** Measured 2026-09-17: 7,448 seconds over
 16,614 postings, 451 of them new. The old "14 minutes" figure in these notes was wrong and was

@@ -15,7 +15,7 @@
 //   node src/jobs/hunt.mjs --verify-companies
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db } from '../db.mjs';
+import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db, retireMissing } from '../db.mjs';
 import { screen, roleRelevant, tierOf, fmt } from './eligibility.mjs';
 import { enabledTracks } from './tracks.mjs';
 
@@ -130,7 +130,10 @@ async function main() {
   const onlyCompany = arg('company');
 
   const globalNames = Object.keys(GLOBAL).filter((n) => (!onlySource || onlySource === n) && !onlyCompany);
-  let targets = companies.companies;
+  // A board marked disabled is one that has been verified dead, not one nobody got round to.
+  // Skipping it stops a guaranteed 404 being counted as an error on every single run.
+  const live = companies.companies.filter((c) => !c.disabled);
+  let targets = live;
   if (onlySource && !GLOBAL[onlySource]) targets = targets.filter((c) => c.ats === onlySource);
   else if (onlySource) targets = [];
   if (onlyCompany) targets = companies.companies.filter((c) => c.slug === onlyCompany);
@@ -181,29 +184,89 @@ async function main() {
         tier: tierOf(verdict),
       });
     }
-    if (sourceLabel) console.log(`  ${sourceLabel.padEnd(12)} ${String(jobs.length).padStart(5)} returned`);
+    // A source that returns nothing is a problem, not a quiet success. Under-collection is the
+    // usual cause of "the filter found no jobs", and it is invisible unless it is said out loud.
+    if (sourceLabel) {
+      const zero = jobs.length === 0;
+      if (zero) { tally.emptySources = (tally.emptySources || 0) + 1; logEvent('hunt_empty_source', sourceLabel); }
+      console.log(`  ${sourceLabel.padEnd(12)} ${String(jobs.length).padStart(5)} returned${zero ? '   <-- NOTHING. Blocked, rate-limited, or the API moved.' : ''}`);
+    }
   };
 
-  for (const name of globalNames) {
-    try {
-      const mod = await import(GLOBAL[name]);
-      handle(await mod.collect(cfg, {}), name);
-    } catch (e) {
+  // Seven different hosts, fetched one after another, means six of them are idle at any moment.
+  // Start them all, then consume the results in order.
+  //
+  // The WRITES stay strictly sequential. handle() upserts and sets verdicts, and SQLite here is a
+  // single synchronous connection - overlapping that would serialise anyway, or deadlock trying.
+  // Only the waiting overlaps, which is the part that was taking an hour.
+  const started = globalNames.map((name) =>
+    import(GLOBAL[name])
+      .then((mod) => mod.collect(cfg, {}))
+      .then((jobs) => ({ name, jobs }), (error) => ({ name, error })));
+
+  for (const pending of started) {
+    const { name, jobs, error } = await pending;
+    if (error) {
       tally.errors++;
-      console.log(`  ${name.padEnd(12)} ERROR ${e.message}`);
-      logEvent('hunt_error', `${name} ${e.message}`);
+      console.log(`  ${name.padEnd(12)} ERROR ${error.message}`);
+      logEvent('hunt_error', `${name} ${error.message}`);
+      continue;
     }
+    handle(jobs, name);
   }
 
   if (targets.length) {
     const collected = [];
+    // Which boards answered cleanly, and what they said. A board that threw is NOT evidence that
+    // its jobs are gone - it is evidence of nothing - so it is kept out of the retirement pass.
+    const ok = new Set();
+    const seenBySource = {};
     await pool(targets, 6, async (c) => {
       try {
         const mod = await import(COMPANY[c.ats]);
-        collected.push(...await mod.collect(cfg, { slug: c.slug, company: c }));
+        const got = await mod.collect(cfg, { slug: c.slug, company: c });
+        collected.push(...got);
+        ok.add(c.ats);
+        (seenBySource[c.ats] ||= new Set());
+        for (const j of got) seenBySource[c.ats].add(j.source_id);
       } catch (e) { tally.errors++; logEvent('hunt_error', `${c.ats}:${c.slug} ${e.message}`); }
     });
     handle(collected, 'company boards');
+
+    // Retire what the boards no longer list.
+    //
+    // Guarded hard, because the failure mode is catastrophic and silent: a filtered or partial run
+    // would see almost nothing and conclude almost everything had closed. Only a full sweep of
+    // every company board, actually writing, gets to retire anything.
+    // "Full" means every board we still poll, so it has to compare against the live list - comparing
+    // against the raw list would silently disable retirement forever the moment one board is retired.
+    const fullSweep = !onlySource && !onlyCompany && !onlyTrack && !dryRun
+      && targets.length === live.length;
+    if (fullSweep) {
+      const retired = { seen: 0, missing: 0, closed: 0 };
+      for (const ats of ok) {
+        // Only boards that return their COMPLETE listing. A search slice tells you nothing by omission.
+        if (!['greenhouse', 'lever', 'ashby'].includes(ats)) continue;
+        if (!seenBySource[ats]?.size) continue;          // an empty board is a bad morning, not a purge
+
+        // A sweep that collected far less than we already hold did not see the board properly, and
+        // absence proves nothing about jobs it never looked at. Workable answering 429 dropped a
+        // run from 16,283 postings to 12,003 without raising a single error; the same collapse on
+        // a company board would have retired thousands of live jobs on the next run.
+        const held = db().prepare("SELECT COUNT(*) n FROM jobs WHERE source = ? AND status != 'closed'").get(ats).n;
+        if (held && seenBySource[ats].size < held * 0.5) {
+          console.log(`  ${ats}: saw ${seenBySource[ats].size} of ${held} known postings — too few to retire anything, skipping.`);
+          continue;
+        }
+        const r = retireMissing(ats, seenBySource[ats]);
+        retired.seen += r.seen; retired.missing += r.missing; retired.closed += r.closed;
+      }
+      tally.closed = retired.closed;
+      tally.missingOnce = retired.missing;
+      if (retired.closed || retired.missing) {
+        console.log(`\n  gone from their boards: ${retired.closed} closed, ${retired.missing} missing once (closed on the next miss)`);
+      }
+    }
   }
 
   console.log('');

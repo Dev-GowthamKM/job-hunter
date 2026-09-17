@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   track              TEXT,                   -- dev | ai | marketing | game  (config/candidate.json)
   tier               TEXT,                   -- match | stretch | regional | no  (see eligibility.tierOf)
   hidden             INTEGER NOT NULL DEFAULT 0,  -- owner dismissed it from the dashboard
+  missing_runs       INTEGER NOT NULL DEFAULT 0,  -- consecutive sweeps absent from its own board
   notes              TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_status      ON jobs(status);
@@ -316,6 +317,8 @@ function migrate(d) {
     ['track', 'TEXT'],
     ['hidden', 'INTEGER NOT NULL DEFAULT 0'],
     ['tier', 'TEXT'],
+    // How many consecutive full sweeps this posting was absent from its own board. Two means gone.
+    ['missing_runs', 'INTEGER NOT NULL DEFAULT 0'],
   ];
   for (const [name, ddl] of added) {
     if (!cols.includes(name)) d.exec(`ALTER TABLE jobs ADD COLUMN ${name} ${ddl}`);
@@ -483,6 +486,37 @@ export function setJobVerdict(id, { eligibility, reason, layer, status, score = 
 }
 
 /** Dismiss a job from the dashboard, or bring it back. */
+/**
+ * Retire postings that have vanished from the board that published them.
+ *
+ * Only for sources that return a COMPLETE board - Greenhouse, Lever, Ashby. For those, a posting
+ * that was there yesterday and is gone today has been taken down, and that is the only reliable
+ * closure signal available. Fetching the posting's own page does not work: Railway serves a 1.2KB
+ * SPA shell whether the job is live or two years dead, Workable answers 403, and no two boards
+ * agree on the wording of "no longer accepting applications".
+ *
+ * Query-driven sources are excluded on purpose. A Workable search returns eight pages for a phrase;
+ * a live job can fall off page eight because thirty newer ones appeared above it. Absence there
+ * means nothing at all.
+ *
+ * Two strikes, not one. Boards have bad mornings, and a single empty response should not retire a
+ * company's entire board.
+ */
+export function retireMissing(source, seenSourceIds) {
+  const d = db();
+  const rows = d.prepare("SELECT id, source_id, missing_runs FROM jobs WHERE source = ? AND status != 'closed'").all(source);
+  const back = d.prepare('UPDATE jobs SET missing_runs = 0, updated_at = ? WHERE id = ?');
+  const miss = d.prepare('UPDATE jobs SET missing_runs = missing_runs + 1, updated_at = ? WHERE id = ?');
+  const shut = d.prepare("UPDATE jobs SET status = 'closed', hidden = 1, missing_runs = missing_runs + 1, updated_at = ? WHERE id = ?");
+  const t = now();
+  let closed = 0, missing = 0, seen = 0;
+  for (const r of rows) {
+    if (seenSourceIds.has(r.source_id)) { if (r.missing_runs) back.run(t, r.id); seen++; continue; }
+    if (r.missing_runs >= 1) { shut.run(t, r.id); closed++; } else { miss.run(t, r.id); missing++; }
+  }
+  return { seen, missing, closed };
+}
+
 export function setJobHidden(id, hidden = true) {
   db().prepare('UPDATE jobs SET hidden=?, updated_at=? WHERE id=?').run(hidden ? 1 : 0, now(), id);
 }

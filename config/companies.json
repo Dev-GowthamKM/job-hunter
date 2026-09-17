@@ -256,7 +256,8 @@
       "name": "Postman",
       "tier": "brand",
       "globalHiring": true,
-      "notes": "Bangalore engineering presence."
+      "notes": "Bangalore engineering presence. Board returns 404 as of 2026-09-18 - they have moved off this Greenhouse slug. Kept rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "ramp",

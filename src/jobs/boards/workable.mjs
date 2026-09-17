@@ -12,7 +12,7 @@
 // Those totals are the reason this paginates hard. Taking the first page meant taking 20 of 2,999
 // AI-engineer postings and then wondering why the work-from-anywhere filter found nothing: the
 // filter was fine, the pool it was given was 0.7% of what existed.
-import { fetchWithRetry, stripHtml, sleep } from '../../sources/_util.mjs';
+import { fetchWithRetry, stripHtml, sleep, pool, RateLimited } from '../../sources/_util.mjs';
 import { searchQueries } from '../tracks.mjs';
 
 const API = 'https://jobs.workable.com/api/v1/jobs';
@@ -40,8 +40,18 @@ async function search(query, { pages = 1 } = {}) {
   for (let p = 0; p < pages; p++) {
     const url = `${API}?query=${encodeURIComponent(query)}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`;
     let body;
-    try { body = await fetchWithRetry(url, { timeout: 25000 }).then((r) => r.json()); }
-    catch { break; }
+    try {
+      body = await fetchWithRetry(url, { timeout: 25000 }).then((r) => r.json());
+    } catch (e) {
+      // A rate limit is not the end of the results and must not be swallowed.
+      //
+      // `catch { break }` treated every failure as "no more pages", so when Workable started
+      // answering 429 this source returned zero postings and the hunt printed "errors 0". A silent
+      // zero from the biggest source in the pipeline is the exact failure this project already
+      // warns about: the filter gets blamed for finding nothing when it was never given anything.
+      if (e instanceof RateLimited) throw e;
+      break;
+    }
     out.push(...(body.jobs || []));
     token = body.nextPageToken;
     if (!token) break;
@@ -57,8 +67,31 @@ export async function collect(cfg, { pages = 8 } = {}) {
   const seen = new Set();
   const out = [];
 
-  for (const { track, query } of queries) {
-    const jobs = await search(query, { pages });
+  // The 67 searches are independent of each other - it is only the PAGES inside one search that
+  // must stay in order, because Workable paginates by an opaque pageToken. So the queries run
+  // through a pool and each one walks its own cursor.
+  // Concurrency 2, not 5.
+  //
+  // Five got this IP rate-limited by Workable within a single run, and a rate-limited Workable
+  // returns nothing at all - which is far worse than a slow one. Two is measurably faster than
+  // sequential and stayed under the limit. The number is empirical, not a guess; raise it only
+  // with evidence.
+  //
+  // One 429 stops the whole source: the remaining queries would all be refused anyway, and
+  // continuing to ask is what caused the block in the first place.
+  let limited = null;
+  const perQuery = await pool(queries, 2, async ({ query }) => {
+    if (limited) return [];
+    try { return await search(query, { pages }); }
+    catch (e) { if (e instanceof RateLimited) { limited = e; return []; } throw e; }
+  });
+  if (limited) {
+    throw new Error(`Workable rate-limited this IP${limited.retryAfter ? `; retry after ${limited.retryAfter}s` : ''}. `
+      + 'Collected nothing. Lower the concurrency in collect() or wait for the limit to clear.');
+  }
+
+  for (const [qi, { track, query }] of queries.entries()) {
+    const jobs = perQuery[qi] || [];
     for (const j of jobs) {
       if (!j.id || seen.has(j.id)) continue;            // the same job matches several track titles
       seen.add(j.id);
