@@ -45,6 +45,8 @@ if (process.platform !== 'darwin') {
 
 const launchctl = (...args) => spawnSync('launchctl', args, { encoding: 'utf8' });
 const loaded = (label = LABEL) => launchctl('print', `${TARGET}/${label}`).status === 0;
+/** Registered is not the same as running: a scheduled job spends most of its life registered and idle. */
+const running = (label = LABEL) => /\n\s*state = running/.test(launchctl('print', `${TARGET}/${label}`).stdout || '');
 
 // The node that is running this script is the node the service should use. Resolving it any other
 // way - `which node`, a hardcoded /usr/local/bin - breaks the moment Node is upgraded or moved,
@@ -275,6 +277,18 @@ if (cmd === 'install') {
       .exec(readFileSync(HUNT_PLIST, 'utf8'));
     const when = t ? `${String(t[1]).padStart(2, '0')}:${String(t[2]).padStart(2, '0')}` : 'a set time';
     console.log(`collecting   every day at ${when}`);
+
+    // Say when one is happening NOW.
+    //
+    // Without this, a status check during a run reported the previous run's date - so a collection
+    // that started this morning showed as "last run: two days ago", which reads as a schedule that
+    // is not working. The job count moves during a run too, and a number that has gone up since
+    // the last look is alarming rather than reassuring if nothing explains it.
+    if (running(HUNT_LABEL)) {
+      console.log(`             RUNNING NOW — the job count will keep moving until it finishes`);
+      console.log(`             watch it: tail -f ${HUNT_LOG}`);
+    }
+
     const last = await lastDaily();
     console.log(`last run     ${last || 'not yet'}`);
   } else {
