@@ -22,6 +22,11 @@ outbox/*.md
 # Personal portfolio page with contact details.
 site/
 
+# Scratch pipeline for the public demo build: an invented candidate and invented jobs, rebuilt
+# from scratch by `npm run demo`. The built page it produces, docs/, IS committed - that is what
+# GitHub Pages serves.
+.demo/
+
 # ── Ordinary ignores ────────────────────────────────────────────────────────
 node_modules/
 .env

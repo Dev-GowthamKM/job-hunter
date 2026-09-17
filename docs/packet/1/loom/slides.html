@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alex Rivera — Northwind Labs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Screen-shared into a webcam recording, so every choice here is about surviving video compression:
+   very large type, high contrast, generous spacing, nothing that relies on a thin hairline or on
+   colour alone to carry meaning. */
+:root {
+  --bg:#0f1720; --bg2:#16212e; --ink:#eef4fa; --muted:#93a6ba; --line:#28384a;
+  --accent:#f0a04b; --accent2:#5ec8c0;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body {
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(1100px 620px at 78% -10%, rgba(240,160,75,.14), transparent 60%),
+    radial-gradient(900px 560px at 8% 108%, rgba(94,200,192,.11), transparent 62%),
+    var(--bg);
+  color:var(--ink);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+#stage { width:min(1160px,92vw); padding:4vh 2vw; }
+.slide { display:none; }
+.slide.on { display:block; animation:rise .22s cubic-bezier(.2,.7,.3,1); }
+@keyframes rise { from { opacity:0; transform:translateY(10px);} to { opacity:1; transform:none; } }
+
+.kicker {
+  display:inline-flex; align-items:center; gap:.6em;
+  font-size:clamp(11px,1.25vw,15px); font-weight:600; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--accent); margin-bottom:2.6vh;
+}
+.kicker::before { content:""; width:2.2em; height:2px; background:var(--accent); border-radius:2px; }
+
+h1 {
+  font-family:"Fraunces",Georgia,serif; font-weight:600;
+  font-size:clamp(32px,5.4vw,70px); line-height:1.04; letter-spacing:-.018em;
+}
+h2 {
+  font-family:"Fraunces",Georgia,serif; font-weight:600;
+  font-size:clamp(25px,3.7vw,47px); line-height:1.14; letter-spacing:-.012em; margin-bottom:3.2vh;
+}
+p.lead { font-size:clamp(16px,2vw,27px); line-height:1.48; color:var(--muted); margin-top:2.4vh; max-width:34ch; }
+
+ul { list-style:none; margin-top:1vh; }
+li {
+  font-size:clamp(16px,2.05vw,29px); line-height:1.38;
+  padding:1.55vh 0 1.55vh 1.7em; position:relative; border-bottom:1px solid var(--line);
+}
+li:last-child { border-bottom:0; }
+li::before {
+  content:""; position:absolute; left:.15em; top:2.45vh;
+  width:.5em; height:.5em; border-radius:50%; background:var(--accent);
+}
+li b, b { font-weight:800; color:#fff; }
+
+.big {
+  font-family:"JetBrains Mono",ui-monospace,monospace; font-weight:500;
+  font-size:clamp(50px,9.5vw,128px); letter-spacing:-.035em; line-height:1;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+}
+.big-sub { font-size:clamp(15px,1.95vw,25px); color:var(--muted); margin-top:2vh; max-width:40ch; }
+
+.two { display:grid; grid-template-columns:1fr 1fr; gap:4vw; margin-top:1vh; }
+.two h3 {
+  font-size:clamp(11px,1.2vw,15px); text-transform:uppercase; letter-spacing:.16em;
+  color:var(--muted); margin-bottom:1.6vh; padding-bottom:.9vh; border-bottom:2px solid var(--line);
+}
+.two > div:first-child h3 { color:var(--accent2); border-bottom-color:var(--accent2); }
+.two > div:last-child h3 { color:var(--accent); border-bottom-color:var(--accent); }
+.two li { font-size:clamp(14px,1.6vw,22px); padding:1.15vh 0 1.15vh 1.5em; }
+.two > div:first-child li::before { background:var(--accent2); }
+
+/* Company mark. Falls back to a lettermark when the logo will not load, so a slide is never broken
+   by someone else's CDN. */
+.brand { display:flex; align-items:center; gap:.7em; margin-bottom:3vh; }
+.brand img { width:clamp(34px,3.6vw,52px); height:clamp(34px,3.6vw,52px); border-radius:9px; background:#fff; object-fit:contain; padding:5px; }
+.brand .mark {
+  width:clamp(34px,3.6vw,52px); height:clamp(34px,3.6vw,52px); border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#0f1720;
+  display:none; align-items:center; justify-content:center; font-weight:800;
+  font-size:clamp(16px,1.8vw,24px);
+}
+.brand .who { font-size:clamp(15px,1.7vw,23px); font-weight:600; }
+
+footer {
+  position:fixed; bottom:2.6vh; left:0; right:0;
+  display:flex; justify-content:space-between; padding:0 3vw;
+  font-size:12.5px; color:var(--muted);
+}
+.dots { display:flex; gap:7px; align-items:center; }
+.dots i { width:7px; height:7px; border-radius:50%; background:var(--line); display:block; }
+.dots i.on { background:var(--accent); width:20px; border-radius:4px; }
+kbd { border:1px solid var(--line); border-radius:4px; padding:1px 6px; font-family:inherit; }
+@media print { footer { display:none; } .slide { display:block; page-break-after:always; } }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<footer><span id="who"></span><span class="dots" id="dots"></span><span><kbd>←</kbd> <kbd>→</kbd> · <kbd>F</kbd> full screen</span></footer>
+
+<!-- loom-producer replaces ONLY this block. Everything above is the template. -->
+<script type="application/json" id="deck">
+{
+  "who": "Alex Rivera — Full Stack Engineer",
+  "slides": [
+    {
+      "brand": {
+        "name": "Northwind Labs",
+        "logo": "https://logo.clearbit.com/example.com"
+      },
+      "kicker": "Application · Full Stack Engineer",
+      "h1": "Alex Rivera",
+      "lead": "Full-stack engineer · AI systems · Lisbon, Portugal"
+    },
+    {
+      "kicker": "What I built",
+      "big": "16,000",
+      "bigSub": "job postings screened per run, across dozens of boards, in Node with zero dependencies — full-time, salary band, and whether I am actually eligible."
+    },
+    {
+      "kicker": "The part that matters",
+      "h2": "Every accept and reject records the sentence that caused it.",
+      "list": [
+        "So the filter can be **audited**, not trusted",
+        "Reading that output found **four rules in my own code** that were quietly wrong",
+        "One read **equity grants as base salary** — a $190k role looked like $24k",
+        "It is also how I found this job"
+      ]
+    },
+    {
+      "kicker": "Honest fit",
+      "h2": "What I bring, and what I don’t.",
+      "columns": [
+        {
+          "head": "I have",
+          "items": [
+            "Their stack: **javascript, typescript, react**",
+            "Projects built beyond any curriculum",
+            "A year of client work **entirely in English**",
+            "B.E. Artificial Intelligence & Data Science, 2025"
+          ]
+        },
+        {
+          "head": "I don’t, yet",
+          "items": [
+            "sql"
+          ]
+        }
+      ]
+    },
+    {
+      "brand": {
+        "name": "Northwind Labs",
+        "logo": "https://logo.clearbit.com/example.com"
+      },
+      "kicker": "The ask",
+      "h1": "Twenty minutes.",
+      "lead": "Not the strongest candidate on paper. A strong one on evidence of building things nobody asked for."
+    }
+  ]
+}
+</script>
+
+<script>
+const deck = JSON.parse(document.getElementById('deck').textContent);
+const stage = document.getElementById('stage');
+document.getElementById('who').textContent = deck.who || '';
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const rich = (s) => esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+
+const brand = (s) => {
+  if (!s.brand) return '';
+  const initials = String(s.brand.name || '?').replace(/[^A-Za-z ]/g,'').split(/\s+/)
+    .filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  const img = s.brand.logo
+    ? `<img src="${esc(s.brand.logo)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : '';
+  return `<div class="brand">${img}<div class="mark" style="${s.brand.logo?'':'display:flex'}">${esc(initials)}</div>
+          <span class="who">${esc(s.brand.name || '')}</span></div>`;
+};
+
+stage.innerHTML = deck.slides.map((s,i)=>`
+  <section class="slide${i===0?' on':''}">
+    ${brand(s)}
+    ${s.kicker?`<div class="kicker">${esc(s.kicker)}</div>`:''}
+    ${s.h1?`<h1>${rich(s.h1)}</h1>`:''}
+    ${s.h2?`<h2>${rich(s.h2)}</h2>`:''}
+    ${s.big?`<div class="big">${rich(s.big)}</div>`:''}
+    ${s.bigSub?`<div class="big-sub">${rich(s.bigSub)}</div>`:''}
+    ${s.lead?`<p class="lead">${rich(s.lead)}</p>`:''}
+    ${s.list?`<ul>${s.list.map(l=>`<li>${rich(l)}</li>`).join('')}</ul>`:''}
+    ${s.columns?`<div class="two">${s.columns.map(c=>`<div><h3>${esc(c.head)}</h3><ul>${c.items.map(l=>`<li>${rich(l)}</li>`).join('')}</ul></div>`).join('')}</div>`:''}
+  </section>`).join('');
+
+const slides = [...document.querySelectorAll('.slide')];
+const dots = document.getElementById('dots');
+dots.innerHTML = slides.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('');
+let at = 0;
+const go = (n) => {
+  at = Math.max(0, Math.min(slides.length-1, n));
+  slides.forEach((s,i)=>s.classList.toggle('on', i===at));
+  [...dots.children].forEach((d,i)=>d.classList.toggle('on', i===at));
+};
+addEventListener('keydown',(e)=>{
+  if (e.key==='ArrowRight'||e.key===' '||e.key==='PageDown') { e.preventDefault(); go(at+1); }
+  if (e.key==='ArrowLeft'||e.key==='PageUp') { e.preventDefault(); go(at-1); }
+  if (e.key==='Home') go(0);
+  if (e.key==='End') go(slides.length-1);
+  if (e.key.toLowerCase()==='f') document.documentElement.requestFullscreen?.();
+});
+addEventListener('click',(e)=>go(at + (e.clientX < innerWidth*0.25 ? -1 : 1)));
+</script>
+</body>
+</html>

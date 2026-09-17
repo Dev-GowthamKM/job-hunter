@@ -15,7 +15,7 @@
 //   node src/jobs/hunt.mjs --verify-companies
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db } from '../db.mjs';
+import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db } from '../db.mjs';
 import { screen, roleRelevant, tierOf, fmt } from './eligibility.mjs';
 import { enabledTracks } from './tracks.mjs';
 
@@ -40,8 +40,8 @@ const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`
 const flag = (n) => process.argv.includes(`--${n}`);
 
 function loadConfig(onlyTrack) {
-  const companies = JSON.parse(readFileSync(join(ROOT, 'config', 'companies.json'), 'utf8'));
-  const candidate = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const companies = JSON.parse(readFileSync(join(CONFIG, 'companies.json'), 'utf8'));
+  const candidate = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   if (onlyTrack) {
     if (!candidate.tracks[onlyTrack]) {
       console.error(`Unknown track "${onlyTrack}". Known: ${Object.keys(candidate.tracks).join(', ')}`);

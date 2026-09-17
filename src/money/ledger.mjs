@@ -9,10 +9,10 @@
 //   node src/money/ledger.mjs close --month=2026-09
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db, now, logEvent } from '../db.mjs';
+import { CONFIG, ROOT, db, now, logEvent } from '../db.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
-const cfg = () => JSON.parse(readFileSync(join(ROOT, 'config', 'money.json'), 'utf8'));
+const cfg = () => JSON.parse(readFileSync(join(CONFIG, 'money.json'), 'utf8'));
 const D = db();
 
 export const thisMonth = () => new Date().toISOString().slice(0, 7);

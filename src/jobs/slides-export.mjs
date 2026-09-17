@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { deflateRawSync, crc32 } from 'node:zlib';
-import { ROOT } from '../db.mjs';
+import { DATA } from '../db.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
 
@@ -25,7 +25,7 @@ const CHROME = [
   '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
 ].find((p) => existsSync(p));
 
-const deckDir = (jobId) => join(ROOT, 'data', 'applications', String(jobId), 'loom');
+const deckDir = (jobId) => join(DATA, 'applications', String(jobId), 'loom');
 
 /** The slide data the deck was built from, read back out of the page. */
 export function readDeck(jobId) {

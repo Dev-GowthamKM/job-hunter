@@ -9,10 +9,10 @@
 //   node src/money/offer.mjs --usd=90000 --rate=88 --current=780000
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from '../db.mjs';
+import { CONFIG, ROOT } from '../db.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
-const c = JSON.parse(readFileSync(join(ROOT, 'config', 'money.json'), 'utf8'));
+const c = JSON.parse(readFileSync(join(CONFIG, 'money.json'), 'utf8'));
 const M = c.offerModel;
 const money = (n) => `${c.symbol}${Math.round(n).toLocaleString('en-IN')}`;
 

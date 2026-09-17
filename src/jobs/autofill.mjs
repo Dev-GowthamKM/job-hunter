@@ -11,12 +11,12 @@
 //      whole system is built not to do.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db } from '../db.mjs';
+import { CONFIG, DATA, ROOT, db } from '../db.mjs';
 
 /** The standard fields every ATS asks for, taken from the profile rather than typed again. */
 export function profileFields() {
-  const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const master = JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const id = { ...master.identity, ...cand.identity };
   const [first, ...rest] = String(id.name || '').split(' ');
 
@@ -44,13 +44,13 @@ export function profileFields() {
  * burns the company.
  */
 export function screeningAnswers(job) {
-  const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const master = JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const who = { ...master.identity, ...cand.identity };
   const where = who.basedIn || who.location || 'your location';
   const tz = who.timezone || '';
   const auth = who.workAuthorization || 'See config/candidate.json — fill in your actual status.';
-  const dir = join(ROOT, 'data', 'applications', String(job.id));
+  const dir = join(DATA, 'applications', String(job.id));
   const research = existsSync(join(dir, 'research.md')) ? readFileSync(join(dir, 'research.md'), 'utf8') : '';
 
   // The "why this company" answer has to come from the research, or it is the same paragraph

@@ -12,7 +12,7 @@
 //   node src/jobs/apply.mjs applied --job=42     record that you actually sent it
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db, now, logEvent } from '../db.mjs';
+import { DATA, db, now, logEvent } from '../db.mjs';
 import { renderOnePage, writeHtmlOnly } from './render.mjs';
 import { coverage, resumeText } from './ats.mjs';
 import { researchJob } from './research.mjs';
@@ -28,7 +28,7 @@ const getJob = (id) => {
   if (!j) { console.error(`No job ${id}.`); process.exit(1); }
   return j;
 };
-const packetDir = (id) => join(ROOT, 'data', 'applications', String(id));
+const packetDir = (id) => join(DATA, 'applications', String(id));
 const getApp = (jobId) => D.prepare('SELECT * FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(Number(jobId));
 
 function init(id, { quiet = false } = {}) {
@@ -44,7 +44,7 @@ function init(id, { quiet = false } = {}) {
   // and it is what tells the owner which of the posting's demands he can actually evidence.
   const dossier = researchJob(job.id, { quiet: true });
 
-  const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
+  const master = JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8'));
   const seed = join(dir, 'resume.json');
 
   // A deterministic first pass, so every packet starts relevant instead of identical.
@@ -75,7 +75,7 @@ function init(id, { quiet = false } = {}) {
   // the packets already on disk: they kept quoting a profile line and a skill list the owner had
   // replaced. A packet is a view of the fact bank, so a newer bank wins.
   const bankNewer = existsSync(seed)
-    && statSync(join(ROOT, 'data', 'resume', 'master.json')).mtimeMs > statSync(seed).mtimeMs;
+    && statSync(join(DATA, 'resume', 'master.json')).mtimeMs > statSync(seed).mtimeMs;
 
   if (!existsSync(seed) || bankNewer || flag('force')) {
     // Seeded straight from the fact bank. The tailorer edits this down; it never adds to it.
@@ -132,7 +132,12 @@ function render(id, { quiet = false, pdf: wantPdf = flag('pdf') } = {}) {
   const resumeJson = join(dir, 'resume.json');
   if (!existsSync(resumeJson)) { console.error(`No resume.json yet. Run: node src/jobs/apply.mjs init --job=${id}`); process.exit(1); }
 
-  const pdf = join(dir, `${(job.company || 'company').replace(/[^a-z0-9]+/gi, '_')}_Gowtham_K_M.pdf`);
+  // The candidate's name comes from the fact bank, not from this file. It was hardcoded, which
+  // meant every resume this repo rendered - including one rendered by someone who cloned it - was
+  // filed under the original owner's name.
+  const who = (JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8')).identity?.name || 'resume')
+    .replace(/[^a-z0-9]+/gi, '_');
+  const pdf = join(dir, `${(job.company || 'company').replace(/[^a-z0-9]+/gi, '_')}_${who}.pdf`);
   const out = wantPdf
     ? renderOnePage(resumeJson, pdf)
     : writeHtmlOnly(resumeJson, pdf);

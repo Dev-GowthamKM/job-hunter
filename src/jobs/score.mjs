@@ -8,7 +8,7 @@
 //   node src/jobs/score.mjs --job=42
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db, now, logEvent } from '../db.mjs';
+import { CONFIG, ROOT, db, now, logEvent } from '../db.mjs';
 import { bandFor, resolveTrack } from './tracks.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
@@ -90,7 +90,7 @@ export function scoreJob(job, cand) {
 }
 
 function main() {
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const d = db();
   const one = arg('job');
 

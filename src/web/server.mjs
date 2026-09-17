@@ -14,7 +14,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { spawn } from 'node:child_process';
-import { ROOT, db, now, logEvent, setJobHidden } from '../db.mjs';
+import { CONFIG, DATA, ROOT, db, now, logEvent, setJobHidden } from '../db.mjs';
 import { fmt } from '../jobs/eligibility.mjs';
 import { authenticate, createUser, startSession, userForToken, endSession, pruneSessions, tooManyAttempts, recordAttempt, clearAttempts } from '../auth.mjs';
 import { profileFor, saveProfile, profileReadiness } from '../profile.mjs';
@@ -35,7 +35,7 @@ const SHARE = process.env.SHARE === '1';
 const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
 const D = db();
 
-const cfg = (f) => JSON.parse(readFileSync(join(ROOT, 'config', f), 'utf8'));
+const cfg = (f) => JSON.parse(readFileSync(join(CONFIG, f), 'utf8'));
 const json = (res, body, code = 200) => {
   res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   res.end(JSON.stringify(body));
@@ -107,7 +107,7 @@ function clients() {
     killed: all(`SELECT company, title, substr(notes,1,160) AS notes FROM leads
                  WHERE status='rejected' AND notes IS NOT NULL ORDER BY id DESC LIMIT 14`),
     events: all("SELECT at, kind, lead_id FROM events WHERE kind NOT LIKE 'hunt%' ORDER BY id DESC LIMIT 18"),
-    autopilot: (() => { try { return JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8')).autopilot ?? { enabled: false }; } catch { return { enabled: false }; } })(),
+    autopilot: (() => { try { return JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8')).autopilot ?? { enabled: false }; } catch { return { enabled: false }; } })(),
     paused: one("SELECT value FROM state WHERE key='paused'")?.value === '1',
     inbox: one("SELECT COUNT(*) n FROM messages WHERE direction='in' AND status='received'")?.n ?? 0,
   };
@@ -152,7 +152,7 @@ function jobList(q) {
 
   // Salary is compared in USD, so a non-USD posting has to be converted with the same rates the
   // filter uses. Doing it in SQL keeps paging honest - filtering after LIMIT would silently drop rows.
-  const fx = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8')).compensation.fxToUSD || {};
+  const fx = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8')).compensation.fxToUSD || {};
   const rateCase = `CASE salary_currency ${Object.entries(fx).filter(([k]) => !k.startsWith('_') && k !== 'asOf')
     .map(([k, v]) => `WHEN '${k}' THEN ${v}`).join(' ')} ELSE 1 END`;
   const perCase = `CASE salary_period WHEN 'hour' THEN 2080 WHEN 'month' THEN 12 ELSE 1 END`;
@@ -220,7 +220,7 @@ function tierSummary(userId = 0) {
 }
 
 function trackSummary() {
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const counts = Object.fromEntries(
     D.prepare("SELECT track, COUNT(*) n FROM jobs WHERE eligibility='yes' AND hidden=0 GROUP BY track").all()
       .map((r) => [r.track, r.n]));
@@ -234,7 +234,7 @@ function trackSummary() {
 
 /** One-click searches into the sites that cannot be scraped, pre-filtered to his tracks. */
 function deepLinks() {
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const out = [];
   for (const t of enabledTracks(cand)) {
     const q = encodeURIComponent(t.titles[0]);
@@ -255,7 +255,7 @@ function jobDetail(id) {
   const job = D.prepare('SELECT * FROM jobs WHERE id = ?').get(Number(id));
   if (!job) return null;
   const app = D.prepare('SELECT * FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(job.id);
-  const dir = join(ROOT, 'data', 'applications', String(job.id));
+  const dir = join(DATA, 'applications', String(job.id));
   const file = (f) => (existsSync(join(dir, f)) ? f : null);
   const resumePdf = app?.resume_path ? app.resume_path.split('/').pop() : null;
   return {
@@ -598,7 +598,7 @@ const server = createServer(async (req, res) => {
         if (!owns) return json(res, { error: 'not found' }, 404);
       }
       const rel = normalize(rest.join('/')).replace(/^(\.\.[/\\])+/, '');
-      const dir = join(ROOT, 'data', 'applications', String(Number(id)));
+      const dir = join(DATA, 'applications', String(Number(id)));
       const file = join(dir, rel);
       if (!file.startsWith(dir)) return json(res, { error: 'not found' }, 404);
 
@@ -628,7 +628,7 @@ const server = createServer(async (req, res) => {
       for await (const c of req) chunks.push(c);
       const buf = Buffer.concat(chunks);
       if (!buf.length) return json(res, { ok: false, error: 'empty file' }, 400);
-      const tmp = join(ROOT, 'data', 'resume', name);
+      const tmp = join(DATA, 'resume', name);
       const { writeFileSync: wf } = await import('node:fs');
       wf(tmp, buf);
       try {
@@ -741,7 +741,7 @@ const server = createServer(async (req, res) => {
         // One-line widening of the eligibility filter, from the UI.
         const allowed = ['global-only', 'global-plus-india', 'global-plus-eor'];
         if (!allowed.includes(b.mode)) return json(res, { error: 'bad mode' }, 400);
-        const file = join(ROOT, 'config', 'candidate.json');
+        const file = join(CONFIG, 'candidate.json');
         const c = JSON.parse(readFileSync(file, 'utf8'));
         c.eligibility.mode = b.mode;
         const { writeFileSync } = await import('node:fs');

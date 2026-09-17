@@ -11,7 +11,7 @@
 //   node src/jobs/research.mjs --job=42 --print
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db } from '../db.mjs';
+import { DATA, db } from '../db.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
 
@@ -202,12 +202,12 @@ export function renderResearch(job, r, master) {
 export function researchJob(id, { quiet = false } = {}) {
   const job = db().prepare('SELECT * FROM jobs WHERE id = ?').get(Number(id));
   if (!job) throw new Error(`No job ${id}`);
-  const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
+  const master = JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8'));
 
   const r = buildResearch(job, master);
   const md = renderResearch(job, r, master);
 
-  const dir = join(ROOT, 'data', 'applications', String(job.id));
+  const dir = join(DATA, 'applications', String(job.id));
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'research.md');
   writeFileSync(path, md);

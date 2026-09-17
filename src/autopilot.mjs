@@ -9,7 +9,7 @@
 //   node src/autopilot.mjs              approve and send
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { db, now, logEvent, isSuppressed, sentToday, getState, ROOT } from './db.mjs';
+import { CONFIG, db, now, logEvent, isSuppressed, sentToday, getState, ROOT } from './db.mjs';
 import { sendApproved } from './telegram/outbox.mjs';
 
 const D = db();
@@ -42,7 +42,7 @@ function reasonToHold(m, lead, cfg, sentEver, approvedThisRun) {
   return null;
 }
 
-const cfg = JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8'));
+const cfg = JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8'));
 const drafts = D.prepare("SELECT * FROM messages WHERE status='draft' ORDER BY id").all();
 const sentEver = D.prepare("SELECT COUNT(*) n FROM messages WHERE status='sent'").get().n;
 

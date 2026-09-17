@@ -1,0 +1,19 @@
+Broadfin — Frontend Engineer
+https://example.com/jobs/broadfin
+Fully remote, worldwide
+
+Broadfin is a payments company serving 90,000 small businesses.
+
+We are remote-first and hire globally, with no location requirement.
+
+The work
+- React and TypeScript across our merchant dashboard
+- Design system ownership alongside two designers
+- Accessibility to WCAG 2.2 AA, which we treat as a requirement and not a nice to have
+
+You should have
+- 2+ years of frontend work in a component framework
+- Real CSS skill, not just utility classes
+- An eye for performance budgets
+
+$78,000 - $96,000 plus equity.

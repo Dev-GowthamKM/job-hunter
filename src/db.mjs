@@ -2,11 +2,31 @@
 // Uses node:sqlite (built into Node 22+), so the pipeline has zero dependencies.
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, existsSync, copyFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DB_PATH = join(ROOT, 'data', 'pipeline.db');
+
+// One data directory per run, chosen by the environment.
+//
+// Everything normally points at the owner's real pipeline: the database, the resume fact bank and
+// every application packet all live under `data/`. DATA_DIR exists so a throwaway copy can be
+// driven by the same code, which is what the public demo build does - it fills a scratch directory
+// with an invented candidate and invented jobs and runs the real server against it. That is the
+// only way the demo can be trusted to match what the dashboard actually does.
+//
+// It is also a safety rail. The demo generates packets by calling the real packet builder, and the
+// real packet builder writes to the fact bank's directory. Without this, building the demo would
+// mean temporarily swapping the owner's own resume out of the way, and an interrupted build would
+// leave it swapped. Nothing under `data/` is touched unless DATA_DIR is unset.
+export const DATA = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(ROOT, 'data');
+const DB_PATH = join(DATA, 'pipeline.db');
+
+// The same idea for config. `config/candidate.json` holds a salary floor, a work-authorisation
+// status and an FX table, and the dashboard reports all three - so a demo pointed at the real
+// config would publish the owner's pay expectations. CONFIG_DIR lets the demo run against the
+// `.example.json` files instead, which is what they are for.
+export const CONFIG = process.env.CONFIG_DIR ? resolve(process.env.CONFIG_DIR) : join(ROOT, 'config');
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS leads (
@@ -253,7 +273,7 @@ CREATE TABLE IF NOT EXISTS money_goals (
 let _db;
 export function db() {
   if (!_db) {
-    mkdirSync(join(ROOT, 'data'), { recursive: true });
+    mkdirSync(DATA, { recursive: true });
     _db = new DatabaseSync(DB_PATH);
     _db.exec('PRAGMA journal_mode = WAL;');
     // Wait for a lock instead of failing on it.

@@ -1,0 +1,26 @@
+Northwind Labs — Full Stack Engineer
+https://example.com/jobs/northwind-labs
+Remote — Worldwide
+
+We are a fully distributed team of 40 building developer tooling.
+
+We hire anywhere in the world and have no headquarters. Contract of Employment is issued through our
+employer of record in your country.
+
+What you will do
+- Own features end to end in TypeScript, React and Node.js
+- Design PostgreSQL schemas and the APIs on top of them
+- Share the on-call rotation with six other engineers
+
+Requirements
+- 2+ years shipping production web applications
+- Strong JavaScript and TypeScript
+- Comfortable with SQL and query performance
+- Docker, and enough CI to keep a pipeline green
+
+Nice to have
+- Experience with retrieval-augmented generation
+- Open source contributions
+
+Compensation: $85,000 - $115,000 depending on location and experience.
+New hire equity: $10,000 - $20,000 vesting over four years.

@@ -15,16 +15,16 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
 import { join, extname, basename } from 'node:path';
-import { ROOT, db, now, logEvent } from '../db.mjs';
+import { CONFIG, DATA, ROOT, db, now, logEvent } from '../db.mjs';
 import { pdfText } from './pdftext.mjs';
 import { coverage } from './ats.mjs';
 
-const MASTER = join(ROOT, 'data', 'resume', 'master.json');
+const MASTER = join(DATA, 'resume', 'master.json');
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
 
 const loadMaster = () => JSON.parse(readFileSync(MASTER, 'utf8'));
 const saveMaster = (m) => writeFileSync(MASTER, JSON.stringify(m, null, 2) + '\n');
-const loadCand = () => JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+const loadCand = () => JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
 
 // ---------------------------------------------------------------------------
 // Reading files

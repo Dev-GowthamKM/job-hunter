@@ -10,7 +10,7 @@
 //   node src/jobs/loom.mjs --job=42
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db } from '../db.mjs';
+import { DATA, ROOT, db } from '../db.mjs';
 import { buildResearch } from './research.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
@@ -36,6 +36,11 @@ export function buildLoom(job, master) {
   const domain = companyDomain(job);
   const logo = domain ? `https://logo.clearbit.com/${domain}` : null;
 
+  // Who is speaking comes from the fact bank. It was hardcoded to the original owner's name, so
+  // a clone of this repo produced a script that introduced the wrong person.
+  const fullName = master.identity?.name || 'me';
+  const firstName = fullName.split(/\s+/)[0];
+
   const strongest = (master.projects || [])
     .find((p) => /agent money maker|multi-agent/i.test(p.name)) || (master.projects || [])[0];
   const projectName = strongest?.name || 'the system I built';
@@ -45,7 +50,7 @@ export function buildLoom(job, master) {
 
   // ~90 seconds is about 210 spoken words. Every line below is counted, not estimated.
   const script = {
-    open: `Hi, I'm Gowtham. I'm applying for the ${job.title} role at ${company}.`
+    open: `Hi, I'm ${firstName}. I'm applying for the ${job.title} role at ${company}.`
       + ` I applied here rather than everywhere, and I want to be specific about why — but first,`
       + ` thirty seconds on what I've actually built.`,
 
@@ -75,7 +80,7 @@ export function buildLoom(job, master) {
   const slides = [
     { brand: { name: company, logo },
       kicker: `Application · ${job.title}`,
-      h1: 'Gowtham K M',
+      h1: fullName,
       lead: `${master.identity?.headline || 'AI Engineer'} · ${master.identity?.location || ''}` },
 
     { kicker: 'What I built',
@@ -114,7 +119,8 @@ export function buildLoom(job, master) {
       lead: 'Not the strongest candidate on paper. A strong one on evidence of building things nobody asked for.' },
   ];
 
-  return { script, slides, total, overlap, missing: r.missing, gapYears, company, logo, projectName };
+  return { script, slides, total, overlap, missing: r.missing, gapYears, company, logo, projectName,
+           name: fullName, firstName };
 }
 
 function scriptMd(job, L) {
@@ -190,7 +196,7 @@ function checklistMd(job, L) {
 
 ## Loom settings
 
-- **Title:** \`Gowtham K M — ${job.title} application\`
+- **Title:** \`${L.name} — ${job.title} application\`
 - **Description:** \`90 seconds on why ${L.company}, what I've built, and where I fall short.\`
 - Link set to **anyone with the link can view**. A viewer hitting a login wall closes the tab.
 
@@ -210,21 +216,21 @@ ${!job.salary_min ? `## Ask early\n\nThis posting publishes no salary. Ask the r
 export function loomJob(id, { quiet = false } = {}) {
   const job = db().prepare('SELECT * FROM jobs WHERE id = ?').get(Number(id));
   if (!job) throw new Error(`No job ${id}`);
-  const master = JSON.parse(readFileSync(join(ROOT, 'data', 'resume', 'master.json'), 'utf8'));
+  const master = JSON.parse(readFileSync(join(DATA, 'resume', 'master.json'), 'utf8'));
 
   const L = buildLoom(job, master);
-  const dir = join(ROOT, 'data', 'applications', String(job.id), 'loom');
+  const dir = join(DATA, 'applications', String(job.id), 'loom');
   mkdirSync(dir, { recursive: true });
 
   writeFileSync(join(dir, 'script.md'), scriptMd(job, L));
   writeFileSync(join(dir, 'checklist.md'), checklistMd(job, L));
 
   const tpl = readFileSync(join(ROOT, 'templates', 'slides.html'), 'utf8');
-  const deck = JSON.stringify({ who: `Gowtham K M — ${job.title}`, slides: L.slides }, null, 2);
+  const deck = JSON.stringify({ who: `${L.name} — ${job.title}`, slides: L.slides }, null, 2);
   const html = tpl.replace(
     /<script type="application\/json" id="deck">[\s\S]*?<\/script>/,
     () => `<script type="application/json" id="deck">\n${deck}\n</script>`,
-  ).replace('<title>Loom slides</title>', `<title>Gowtham K M — ${L.company}</title>`);
+  ).replace('<title>Loom slides</title>', `<title>${L.name} — ${L.company}</title>`);
   writeFileSync(join(dir, 'slides.html'), html);
 
   if (!quiet) {

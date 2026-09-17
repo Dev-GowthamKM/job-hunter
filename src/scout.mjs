@@ -7,7 +7,7 @@
 //   node src/scout.mjs --dry-run                print what it found, write nothing
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, upsertLead, logEvent, isSuppressed, db } from './db.mjs';
+import { CONFIG, ROOT, upsertLead, logEvent, isSuppressed, db } from './db.mjs';
 
 const SOURCES = { hn: './sources/hn.mjs', remoteok: './sources/remoteok.mjs', wwr: './sources/wwr.mjs', osm: './sources/osm.mjs', reddit: './sources/reddit.mjs' };
 
@@ -18,7 +18,7 @@ const arg = (name, fallback = null) => {
 const flag = (name) => process.argv.includes(`--${name}`);
 
 async function main() {
-  const cfg = JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8'));
+  const cfg = JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8'));
   const dryRun = flag('dry-run');
   const only = arg('source');
   const city = arg('city');

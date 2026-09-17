@@ -6,11 +6,11 @@
 // in bridge.mjs. Do not add a status to this query, and do not call it from a sub-agent.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { db, now, logEvent, sentToday, ROOT } from '../db.mjs';
+import { CONFIG, db, now, logEvent, sentToday, ROOT } from '../db.mjs';
 import { call, chunk, assertConfigured } from './api.mjs';
 
 export async function sendApproved({ verbose = false } = {}) {
-  const cfg = JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8'));
+  const cfg = JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8'));
   const cap = cfg.dailySendCap ?? 20;
   const D = db();
 

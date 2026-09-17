@@ -6,7 +6,7 @@
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { db, ROOT } from '../db.mjs';
+import { CONFIG, db, ROOT } from '../db.mjs';
 
 const HOST = '127.0.0.1';
 const PORT = 4400;
@@ -16,7 +16,7 @@ const one = (sql, ...a) => { try { return D.prepare(sql).get(...a); } catch { re
 
 function state() {
   let cfg = {};
-  try { cfg = JSON.parse(readFileSync(join(ROOT, 'config', 'targets.json'), 'utf8')); } catch {}
+  try { cfg = JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8')); } catch {}
 
   const stages = Object.fromEntries(all('SELECT status, COUNT(*) n FROM leads GROUP BY status').map((r) => [r.status, r.n]));
   const drafts = all(`SELECT m.id, m.body, m.subject, m.channel, m.status, l.id AS lead_id,

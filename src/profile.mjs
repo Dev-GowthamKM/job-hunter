@@ -7,12 +7,12 @@
 // exactly as it did.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db, now } from './db.mjs';
+import { CONFIG, DATA, ROOT, db, now } from './db.mjs';
 
 const FILES = {
-  candidate: join(ROOT, 'config', 'candidate.json'),
-  master: join(ROOT, 'data', 'resume', 'master.json'),
-  money: join(ROOT, 'config', 'money.json'),
+  candidate: join(CONFIG, 'candidate.json'),
+  master: join(DATA, 'resume', 'master.json'),
+  money: join(CONFIG, 'money.json'),
 };
 
 const readFile = (which) => (existsSync(FILES[which]) ? JSON.parse(readFileSync(FILES[which], 'utf8')) : null);

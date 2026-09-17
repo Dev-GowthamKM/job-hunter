@@ -1,0 +1,177 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Alex Rivera — Resume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600;700&display=swap" rel="stylesheet">
+<style>/* Two-column resume, one page, in colour.
+ *
+ * Order in the rail is deliberate and was chosen by the owner: Profile and Expertise first, because
+ * that is what a recruiter is scanning for, and Contact last, because nobody reads a phone number
+ * before deciding they are interested.
+ *
+ * The columns are CSS grid rather than a table, and the DOM order is header → experience → rail, so
+ * an ATS reading the markup gets the work history before the language list regardless of what the
+ * eye sees. Colour is background and rules only; every character is real selectable text. */
+
+@page { size: A4; margin: 0; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:      #17293f;   /* rail */
+  --navy-deep: #101d2e;   /* header band */
+  --rail-ink:  #dce6f0;
+  --rail-dim:  #8ea6c0;
+  --accent:    #f0a04b;   /* warm amber, used sparingly so it still means something */
+  --accent-dk: #c97e2e;
+  --ink:       #16202b;
+  --muted:     #5a6876;
+  --rule:      #dfe5ec;
+  --tint:      #f7f9fb;
+}
+
+body {
+  font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 9.1pt;
+  line-height: 1.38;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.sheet {
+  display: grid;
+  grid-template-columns: 33.5% 66.5%;
+  grid-template-rows: auto 1fr;
+  min-height: 297mm;
+}
+
+/* ── header band ────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  background: var(--navy-deep);
+  color: #fff;
+  padding: 11mm 11mm 8mm;
+  border-bottom: 2.4pt solid var(--accent);
+}
+h1 {
+  font-size: 25pt;
+  font-weight: 200;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.role {
+  margin-top: 3.4mm;
+  font-size: 9.2pt;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ── left rail ──────────────────────────────────────────── */
+.rail {
+  background: var(--navy);
+  color: var(--rail-ink);
+  padding: 8mm 7mm 10mm 11mm;
+}
+.rail h2 { color: #fff; border-bottom-color: rgba(255,255,255,.22); }
+.rail p, .rail li { font-size: 8.5pt; line-height: 1.45; }
+
+.main { padding: 8mm 11mm 10mm 7mm; background: #fff; }
+
+h2 {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin: 0 0 3mm;
+  padding-bottom: 1.4mm;
+  border-bottom: .8pt solid var(--rule);
+}
+.main h2 { color: var(--navy); border-bottom-color: var(--accent); }
+section + section { margin-top: 6mm; }
+
+/* Expertise reads as a list of capabilities, one per line, with an amber marker. */
+.tags { list-style: none; }
+.tags li { padding: 1.2mm 0 1.2mm 3.6mm; position: relative; border-bottom: .5pt solid rgba(255,255,255,.12); }
+.tags li:last-child { border-bottom: 0; }
+.tags li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); font-size: 7pt; }
+
+.contact div { margin-bottom: 2.1mm; }
+.contact .k {
+  font-weight: 700; font-size: 7.2pt; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--accent);
+}
+.contact .v { word-break: break-word; color: var(--rail-ink); }
+
+.edu { margin-bottom: 3.4mm; }
+.edu .deg { font-weight: 700; color: #fff; }
+.edu .org, .edu .meta { color: var(--rail-dim); font-size: 8.1pt; }
+
+/* ── experience ─────────────────────────────────────────── */
+.entry { margin-bottom: 5mm; break-inside: avoid; }
+.entry:last-child { margin-bottom: 0; }
+.entry .when {
+  display: inline-block;
+  font-size: 7.4pt; font-weight: 700; letter-spacing: .07em;
+  color: var(--accent-dk); background: #fdf3e6;
+  padding: .7mm 2mm; border-radius: 2pt;
+  font-variant-numeric: tabular-nums;
+}
+.entry .what { font-weight: 700; font-size: 10pt; margin-top: 1.3mm; color: var(--navy); }
+.entry .org { color: var(--muted); font-size: 8.7pt; margin-bottom: 1.7mm; }
+.entry ul { list-style: none; }
+.entry li { position: relative; padding-left: 3.6mm; margin-bottom: 1.3mm; }
+.entry li::before {
+  content: ""; position: absolute; left: 0; top: 1.5mm;
+  width: 1.4mm; height: 1.4mm; border-radius: 50%; background: var(--accent);
+}
+
+.summary { font-size: 8.7pt; }
+</style></head><body>
+<div class="sheet">
+  <header>
+    <h1>Alex Rivera</h1>
+    <div class="role">Full-stack engineer · AI systems</div>
+  </header>
+
+  <aside class="rail">
+    <section class=""><h2>Profile</h2><p class="summary">Full-stack engineer with two years building production web applications, moving toward applied AI work. Comfortable owning a feature from schema to deploy.</p></section>
+    <section class=""><h2>Expertise</h2><ul class="tags"><li>JavaScript</li><li>TypeScript</li><li>React</li><li>Node.js</li><li>PostgreSQL</li><li>Docker</li><li>REST APIs</li><li>Retrieval-augmented generation</li><li>LLM prompting</li><li>OpenAI API</li><li>Vector search</li></ul></section>
+    <section class=""><h2>Education</h2>
+    <div class="edu">
+      <div class="deg">BSc Computer Science</div>
+      <div class="org">University of Coimbra</div>
+      <div class="meta">2019 – 2023 · 16/20</div>
+    </div></section>
+    <section class=""><h2>Languages</h2><ul class="tags"><li>English (native)</li><li>Portuguese (conversational)</li></ul></section>
+    <section class="contact"><h2>Contact</h2><div><div class="k">Email</div><div class="v">alex@example.com</div></div><div><div class="k">Phone</div><div class="v">+1 555 0100</div></div><div><div class="k">LinkedIn</div><div class="v">linkedin.com/in/example</div></div><div><div class="k">Location</div><div class="v">Lisbon, Portugal</div></div></section>
+  </aside>
+
+  <main class="main">
+    <section class=""><h2>Experience</h2>
+    <div class="entry">
+      <div class="when">2024-03 – present</div>
+      <div class="what">Software Engineer</div>
+      <div class="org">Meridian Software</div>
+      <ul><li>Built the customer-facing billing dashboard in React and Node, used by 4,000 accounts.</li><li>Cut median API response time from 800ms to 180ms by adding covering indexes and removing N+1 queries.</li></ul>
+    </div>
+    <div class="entry">
+      <div class="when">2023-01 – 2024-02</div>
+      <div class="what">Junior Developer</div>
+      <div class="org">Hollow Pine Studio</div>
+      <ul><li>Shipped twelve client marketing sites on a shared component library.</li><li>Automated the deploy pipeline, taking a release from forty minutes of manual steps to one command.</li></ul>
+    </div></section>
+    <section class=""><h2>Projects</h2>
+    <div class="entry">
+      <div class="when"></div>
+      <div class="what">Ledgerline</div>
+      <div class="org">Side project</div>
+      <ul><li>A double-entry bookkeeping API with zero runtime dependencies.</li></ul>
+    </div></section>
+  </main>
+</div>
+</body></html>

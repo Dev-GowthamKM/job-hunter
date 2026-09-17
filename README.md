@@ -118,6 +118,23 @@ The same database and the same approval gate carry two smaller systems:
   actually worth after tax. It moves no money and gives no investment advice, by design: there is no
   brokerage integration and no bank credential anywhere in the repo.
 
+## The demo
+
+`npm run demo` writes `docs/`, which is what GitHub Pages serves.
+
+GitHub Pages runs no Node and opens no database, so the live dashboard cannot be hosted there — and
+should not be, since it holds a real resume, a real budget and a real phone number. The demo is
+built differently: a scratch pipeline is seeded with an invented candidate, the **real server** is
+started against it, and every endpoint's answer is recorded. The published page is the real
+dashboard with one shim in front of `fetch()` replaying those recordings, plus a client-side
+reimplementation of the job filter so the controls genuinely work.
+
+The packets on it — dossier, one-page PDF, Loom script, slide deck, `.pptx` — were produced by the
+same code that builds the owner's. Nothing on that page belongs to a real person.
+
+Writes return `read-only` rather than pretending to succeed. A demo that recorded a fake approval
+would be lying about the one thing this system exists to guard.
+
 ## Licence
 
 MIT.

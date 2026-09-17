@@ -6,11 +6,11 @@
 //   node src/money/report.mjs --goals
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, db } from '../db.mjs';
+import { CONFIG, ROOT, db } from '../db.mjs';
 
 const arg = (n, d = null) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.split('=').slice(1).join('=') : d; };
 const flag = (n) => process.argv.includes(`--${n}`);
-const c = JSON.parse(readFileSync(join(ROOT, 'config', 'money.json'), 'utf8'));
+const c = JSON.parse(readFileSync(join(CONFIG, 'money.json'), 'utf8'));
 const D = db();
 const money = (n) => `${c.symbol}${Math.round(Number(n)).toLocaleString('en-IN')}`;
 const bar = (used, total, w = 18) => {

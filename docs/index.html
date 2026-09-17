@@ -253,8 +253,1746 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 }
 
 </style>
+
+<script>
+// ── DEMO SHIM ──────────────────────────────────────────────────────────────────────────────────
+// This file is the real dashboard, built by src/web/demo/build.mjs. The data below was recorded
+// from the real server running against an invented candidate and invented jobs. Nothing here is
+// anyone's real information.
+const DEMO = {
+ "snapshot": {
+  "/api/session": {
+   "signedIn": true,
+   "user": {
+    "id": 0,
+    "email": null,
+    "name": "owner"
+   },
+   "share": false,
+   "arms": {
+    "_comment": "Which arms of the system appear in the dashboard. The job hunt is the point; the others are optional and off by default. Turning clients off hides the tab - it does not delete anything, and `npm run scout` still works from the terminal.",
+    "jobs": true,
+    "money": true,
+    "clients": false
+   },
+   "readiness": {
+    "ready": true,
+    "missing": [],
+    "tracks": [
+     "dev",
+     "ai",
+     "marketing",
+     "game"
+    ],
+    "facts": 4
+   }
+  },
+  "/api/overview": {
+   "jobs": {
+    "total": 14,
+    "byEligibility": [
+     {
+      "eligibility": "no",
+      "n": 8
+     },
+     {
+      "eligibility": "unclear",
+      "n": 3
+     },
+     {
+      "eligibility": "yes",
+      "n": 3
+     }
+    ],
+    "byStatus": [
+     {
+      "status": "rejected",
+      "n": 11
+     },
+     {
+      "status": "tailored",
+      "n": 3
+     }
+    ],
+    "bySource": [
+     {
+      "source": "demo",
+      "n": 14
+     }
+    ]
+   },
+   "companies": 77,
+   "lastRun": {
+    "at": "2026-09-17T13:37:32.543Z",
+    "detail": {
+     "found": 14,
+     "sources": 1,
+     "kept": 14
+    }
+   },
+   "mode": "global-only",
+   "band": {
+    "min": 50000,
+    "max": 150000
+   },
+   "money": {
+    "month": "2026-09",
+    "allocated": 3000,
+    "spent": 1433,
+    "left": 1567,
+    "currency": "EUR"
+   },
+   "pendingApproval": 3
+  },
+  "/api/tiers": [
+   {
+    "key": "match",
+    "label": "Apply to these",
+    "n": 3,
+    "why": "Work from anywhere, right level, pay in your band."
+   },
+   {
+    "key": "stretch",
+    "label": "Stretch",
+    "n": 3,
+    "why": "Work from anywhere, but above your level or the pay is unclear. Your call."
+   },
+   {
+    "key": "regional",
+    "label": "Tied to a country",
+    "n": 5,
+    "why": "The right kind of job, but it needs you in a specific place."
+   },
+   {
+    "key": "no",
+    "label": "Not for you",
+    "n": 3,
+    "why": "Not full-time, not your field, or a dealbreaker."
+   }
+  ],
+  "/api/tracks": [
+   {
+    "key": "dev",
+    "label": "Full-stack / Software",
+    "salaryMin": 50000,
+    "salaryMax": 150000,
+    "eligible": 2,
+    "total": 6
+   },
+   {
+    "key": "ai",
+    "label": "AI / ML Engineering",
+    "salaryMin": 50000,
+    "salaryMax": 150000,
+    "eligible": 1,
+    "total": 3
+   },
+   {
+    "key": "marketing",
+    "label": "Media Buying / Paid Ads",
+    "salaryMin": 25000,
+    "salaryMax": 150000,
+    "eligible": 0,
+    "total": 3
+   },
+   {
+    "key": "game",
+    "label": "Game Development",
+    "salaryMin": 25000,
+    "salaryMax": 150000,
+    "eligible": 0,
+    "total": 2
+   }
+  ],
+  "/api/deeplinks": [
+   {
+    "track": "dev",
+    "label": "Full-stack / Software",
+    "links": [
+     {
+      "site": "LinkedIn",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=full%20stack&f_WT=2&f_JT=F&sortBy=DD"
+     },
+     {
+      "site": "Naukri",
+      "url": "https://www.naukri.com/full-stack-jobs?wfhType=0"
+     },
+     {
+      "site": "Indeed",
+      "url": "https://www.indeed.com/jobs?q=full%20stack&sc=0kf%3Aattr(DSQF7)%3B&fromage=7"
+     },
+     {
+      "site": "Wellfound",
+      "url": "https://wellfound.com/role/r/full-stack"
+     }
+    ]
+   },
+   {
+    "track": "ai",
+    "label": "AI / ML Engineering",
+    "links": [
+     {
+      "site": "LinkedIn",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=ai%20engineer&f_WT=2&f_JT=F&sortBy=DD"
+     },
+     {
+      "site": "Naukri",
+      "url": "https://www.naukri.com/ai-engineer-jobs?wfhType=0"
+     },
+     {
+      "site": "Indeed",
+      "url": "https://www.indeed.com/jobs?q=ai%20engineer&sc=0kf%3Aattr(DSQF7)%3B&fromage=7"
+     },
+     {
+      "site": "Wellfound",
+      "url": "https://wellfound.com/role/r/ai-engineer"
+     }
+    ]
+   },
+   {
+    "track": "marketing",
+    "label": "Media Buying / Paid Ads",
+    "links": [
+     {
+      "site": "LinkedIn",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=media%20buyer&f_WT=2&f_JT=F&sortBy=DD"
+     },
+     {
+      "site": "Naukri",
+      "url": "https://www.naukri.com/media-buyer-jobs?wfhType=0"
+     },
+     {
+      "site": "Indeed",
+      "url": "https://www.indeed.com/jobs?q=media%20buyer&sc=0kf%3Aattr(DSQF7)%3B&fromage=7"
+     },
+     {
+      "site": "Wellfound",
+      "url": "https://wellfound.com/role/r/media-buyer"
+     }
+    ]
+   },
+   {
+    "track": "game",
+    "label": "Game Development",
+    "links": [
+     {
+      "site": "LinkedIn",
+      "url": "https://www.linkedin.com/jobs/search/?keywords=game%20developer&f_WT=2&f_JT=F&sortBy=DD"
+     },
+     {
+      "site": "Naukri",
+      "url": "https://www.naukri.com/game-developer-jobs?wfhType=0"
+     },
+     {
+      "site": "Indeed",
+      "url": "https://www.indeed.com/jobs?q=game%20developer&sc=0kf%3Aattr(DSQF7)%3B&fromage=7"
+     },
+     {
+      "site": "Wellfound",
+      "url": "https://wellfound.com/role/r/game-developer"
+     }
+    ]
+   }
+  ],
+  "/api/config": {
+   "candidate": {
+    "_comment": "Copy to config/candidate.json and fill in. This file drives everything: which jobs are collected, which are eligible, and what the tailored resume may claim.",
+    "identity": {
+     "name": "Alex Rivera",
+     "email": "alex@example.com",
+     "phone": "+1 555 0100",
+     "linkedin": "your-linkedin-handle",
+     "basedIn": "City, Country",
+     "timezone": "Region/City (UTC+0)",
+     "workAuthorization": "Where you can legally work, and whether you need sponsorship. Be accurate — this decides which jobs are reachable.",
+     "location": "Lisbon, Portugal"
+    },
+    "eligibility": {
+     "_comment": "THE master switch. 'global-only' means a job must be open to candidates anywhere, with no country restriction. 'global-plus-india' also accepts roles explicitly open to India/APAC.",
+     "mode": "global-only",
+     "_modeEvidence": "Set to global-only on the owner's instruction: he wants roles he can do from anywhere, full stop. The cost is real - the first measurement of this setting found 1 eligible job in 12,192. The answer is not to loosen the filter but to search far more thoroughly, which is why the sources now paginate deeply instead of taking the first page. Set to global-plus-india to also see India-tied roles.",
+     "unclearVerdict": "reject"
+    },
+    "_tracks": "A job is classified into exactly one track before anything else happens. The track decides the salary band, the seniority rule, which resume facts get selected, and how the dashboard groups it. Turn a track off with enabled:false and it stops being collected entirely.",
+    "tracks": {
+     "dev": {
+      "label": "Full-stack / Software",
+      "enabled": true,
+      "salaryMin": 50000,
+      "salaryMax": 150000,
+      "titles": [
+       "full stack",
+       "full-stack",
+       "fullstack",
+       "software engineer",
+       "software developer",
+       "web developer",
+       "frontend",
+       "front end",
+       "front-end",
+       "backend",
+       "back end",
+       "back-end",
+       "react developer",
+       "react engineer",
+       "node developer",
+       "javascript engineer",
+       "javascript developer",
+       "web engineer",
+       "application developer",
+       "product engineer"
+      ]
+     },
+     "ai": {
+      "label": "AI / ML Engineering",
+      "enabled": true,
+      "salaryMin": 50000,
+      "salaryMax": 150000,
+      "titles": [
+       "ai engineer",
+       "ai developer",
+       "ml engineer",
+       "machine learning engineer",
+       "applied ai",
+       "applied scientist",
+       "prompt engineer",
+       "agent engineer",
+       "ai automation",
+       "llm engineer",
+       "llm developer",
+       "generative ai",
+       "ai solutions",
+       "conversational ai",
+       "nlp engineer",
+       "forward deployed engineer",
+       "ai integration"
+      ]
+     },
+     "marketing": {
+      "label": "Media Buying / Paid Ads",
+      "enabled": true,
+      "salaryMin": 25000,
+      "salaryMax": 150000,
+      "_salaryMin": "Lower floor than the dev tracks on purpose. Global-remote paid-media roles routinely pay below $50k, and a $50k floor would reject the entire track before he saw any of it.",
+      "titles": [
+       "media buyer",
+       "media buying",
+       "paid media",
+       "paid social",
+       "paid ads",
+       "performance marketing",
+       "facebook ads",
+       "meta ads",
+       "google ads",
+       "ppc",
+       "ads manager",
+       "advertising manager",
+       "growth marketer",
+       "growth marketing",
+       "demand generation",
+       "user acquisition",
+       "media analyst",
+       "marketing analyst",
+       "campaign manager",
+       "digital marketing",
+       "performance media",
+       "acquisition manager"
+      ]
+     },
+     "game": {
+      "label": "Game Development",
+      "enabled": true,
+      "salaryMin": 25000,
+      "salaryMax": 150000,
+      "entryOnly": true,
+      "_entryOnly": "He described himself as a beginner here. Anything above junior is filtered out, because a mid-level game role would waste a researched dossier and a recorded Loom.",
+      "titles": [
+       "game developer",
+       "game programmer",
+       "gameplay programmer",
+       "unity developer",
+       "unity engineer",
+       "unreal developer",
+       "unreal engineer",
+       "game engineer"
+      ]
+     }
+    },
+    "_excludeTitles": "Hard exclusions, checked BEFORE track matching. These are the shapes of job that filled v1's results and that he has no interest in or background for. A title hitting any of these is dropped even if it also matches a track.",
+    "excludeTitles": [
+     "linux",
+     "kernel",
+     "ubuntu",
+     "debian",
+     "packaging",
+     "bios",
+     "bootloader",
+     "firmware",
+     "device driver",
+     "drivers",
+     "compiler",
+     "gcc",
+     "llvm",
+     "toolchain",
+     "silicon",
+     "embedded",
+     "sustaining engineering",
+     "l3 support",
+     "field engineer",
+     "site reliability",
+     "sre",
+     "kubernetes",
+     "k8s",
+     "openstack",
+     "ceph",
+     "hypervisor",
+     "rtos",
+     "fpga",
+     "verification engineer",
+     "container image",
+     "observability",
+     "distributed systems",
+     "systems engineer",
+     "platform engineer",
+     "sales",
+     "account executive",
+     "recruiter",
+     "talent acquisition",
+     "customer success",
+     "support agent",
+     "technical support",
+     "accountant",
+     "bookkeeper",
+     "hardware",
+     "mechanical",
+     "electrical technician",
+     "civil",
+     "nurse",
+     "driver",
+     "warehouse",
+     "security guard",
+     "teacher"
+    ],
+    "employment": {
+     "types": [
+      "FullTime"
+     ],
+     "_comment": "Full-time only, as instructed. Contract, part-time, internship and freelance are rejected at layer 1."
+    },
+    "_excludeCompanies": "Whole employers whose entire output is the wrong kind of work. Canonical is here because you said plainly that you do not know Ubuntu and have no interest in it - their board is Linux systems engineering end to end, and it was filling your results in v1. Delete the entry to let them back in; nothing else depends on it.",
+    "excludeCompanies": [
+     "Canonical"
+    ],
+    "seniority": {
+     "yearsExperience": 1,
+     "graduated": "2025-01",
+     "rejectTitlePatterns": [
+      "\\bsenior\\b",
+      "\\bsr\\.?\\b",
+      "\\blead\\b",
+      "staff",
+      "principal",
+      "distinguished",
+      "fellow",
+      "director",
+      "\\bvp\\b",
+      "vice president",
+      "head of",
+      "chief",
+      "manager of engineering",
+      "engineering manager",
+      "architect"
+     ],
+     "_rejectTitlePatterns": "Note that 'ads manager' and 'campaign manager' are legitimate individual-contributor marketing titles, so bare 'manager' is NOT rejected - only management-of-people titles are.",
+     "rejectYearsAbove": 5
+    },
+    "compensation": {
+     "currency": "USD",
+     "period": "year",
+     "keepUnknownSalary": true,
+     "_comment": "Per-track floors live under tracks. These are the fallbacks for a job whose track could not be resolved, plus the FX table used to compare a non-USD posting against a USD band.",
+     "min": 50000,
+     "max": 150000,
+     "fxToUSD": {
+      "_comment": "Your rates, not fetched ones. A filter that silently re-prices itself is a filter you cannot audit.",
+      "asOf": "2026-09-08",
+      "INR": 0.0115,
+      "EUR": 1.08,
+      "GBP": 1.27,
+      "CAD": 0.73,
+      "SGD": 0.75,
+      "AUD": 0.66
+     }
+    },
+    "skills": {
+     "_comment": "Used for fit scoring and the ATS keyword check. The resume-tailor may only emphasise what is here - it may never claim a skill that is not. Grows when a resume is uploaded or the gap interview is answered.",
+     "strong": [
+      "javascript",
+      "react",
+      "node.js",
+      "html",
+      "css",
+      "sql",
+      "mysql",
+      "prompt engineering"
+     ],
+     "working": [
+      "python",
+      "machine learning",
+      "artificial intelligence",
+      "rest api",
+      "git",
+      "mongodb"
+     ],
+     "learning": [
+      "typescript",
+      "next.js",
+      "llm",
+      "rag",
+      "agents",
+      "docker",
+      "aws"
+     ],
+     "unproven": [
+      "media buying",
+      "facebook ads",
+      "google ads",
+      "roas",
+      "seo",
+      "unity",
+      "unreal"
+     ],
+     "_unproven": "Claimed by the owner but NOT evidenced by any resume on disk. The tailorer must not assert these until the gap interview supplies real detail - see data/resume/master.json."
+    },
+    "scoring": {
+     "_comment": "Applied only to jobs that already PASSED the eligibility gate. Eligibility is a gate, not a weight - a US-only job cannot be scored into contention.",
+     "weights": {
+      "roleFit": 30,
+      "companyTier": 20,
+      "salaryFit": 20,
+      "seniorityFit": 20,
+      "recency": 10
+     },
+     "minScoreToShortlist": 60,
+     "minScoreToResearch": 65,
+     "maxResearchPerRun": 5,
+     "maxPacketsPerDay": 3
+    },
+    "dealbreakers": [
+     "unpaid",
+     "commission only",
+     "equity only",
+     "revenue share only",
+     "security clearance",
+     "must relocate"
+    ],
+    "arms": {
+     "_comment": "Which arms of the system appear in the dashboard. The job hunt is the point; the others are optional and off by default. Turning clients off hides the tab - it does not delete anything, and `npm run scout` still works from the terminal.",
+     "jobs": true,
+     "money": true,
+     "clients": false
+    }
+   },
+   "money": {
+    "_comment": "Copy to config/money.json. Nothing here moves money; it tracks what you decide and does the arithmetic.",
+    "currency": "EUR",
+    "symbol": "€",
+    "payday": 1,
+    "envelopes": [
+     {
+      "name": "rent",
+      "kind": "need",
+      "percent": 25
+     },
+     {
+      "name": "food",
+      "kind": "need",
+      "percent": 15
+     },
+     {
+      "name": "transport",
+      "kind": "need",
+      "percent": 6
+     },
+     {
+      "name": "bills",
+      "kind": "need",
+      "percent": 8
+     },
+     {
+      "name": "health",
+      "kind": "need",
+      "percent": 4
+     },
+     {
+      "name": "fun",
+      "kind": "want",
+      "percent": 10
+     },
+     {
+      "name": "shopping",
+      "kind": "want",
+      "percent": 5
+     },
+     {
+      "name": "emergency",
+      "kind": "save",
+      "percent": 12
+     },
+     {
+      "name": "invest",
+      "kind": "invest",
+      "percent": 15
+     }
+    ],
+    "_envelopes": "Percentages of the month's allocation, and they must total 100. Edit freely - these are a starting split, not advice. 'invest' is a holding envelope: the agent tracks what you put there and never tells you where to put it.",
+    "projection": {
+     "assumedAnnualReturn": 0.08,
+     "_assumedAnnualReturn": "YOUR assumption, used only to project a savings goal forward. It is arithmetic on a number you chose, not a forecast and not a recommendation. Every projection prints this rate alongside the result."
+    },
+    "offerModel": {
+     "usdToInr": 87,
+     "_usdToInr": "Rate you set. Update it when it drifts; every offer model prints the rate it used.",
+     "currentAnnualTakeHomeInr": null,
+     "_currentAnnualTakeHomeInr": "Your present take-home for the year, so an offer can be compared against something real. Fill this in from your payslips - the agent will not guess it.",
+     "regime": "new",
+     "taxSlabsNewRegime": [
+      {
+       "upTo": 400000,
+       "rate": 0
+      },
+      {
+       "upTo": 800000,
+       "rate": 0.05
+      },
+      {
+       "upTo": 1200000,
+       "rate": 0.1
+      },
+      {
+       "upTo": 1600000,
+       "rate": 0.15
+      },
+      {
+       "upTo": 2000000,
+       "rate": 0.2
+      },
+      {
+       "upTo": 2400000,
+       "rate": 0.25
+      },
+      {
+       "upTo": null,
+       "rate": 0.3
+      }
+     ],
+     "standardDeduction": 75000,
+     "cessRate": 0.04,
+     "_tax": "Editable slabs for the Indian new regime. THIS IS A CALCULATOR, NOT TAX ADVICE - the numbers change with each budget, and a real filing has details this ignores. Check against the current finance act before making a decision on it."
+    }
+   }
+  },
+  "/api/profile": {
+   "scores": [
+    {
+     "track": "dev",
+     "label": "Full-stack / Software",
+     "percent": 45,
+     "matched": [
+      "typescript",
+      "react",
+      "production",
+      "location",
+      "node",
+      "postgresql",
+      "apis",
+      "on-call",
+      "rotation",
+      "web",
+      "applications",
+      "javascript",
+      "comfortable",
+      "docker",
+      "pipeline",
+      "retrieval-augmented",
+      "generation",
+      "source"
+     ],
+     "missing": [
+      "hire",
+      "design",
+      "six",
+      "engineers",
+      "requirements",
+      "performance",
+      "equity",
+      "requirement",
+      "remote",
+      "distributed",
+      "contract",
+      "features",
+      "schemas",
+      "them",
+      "shipping",
+      "sql",
+      "query",
+      "green",
+      "contributions",
+      "depending"
+     ],
+     "evidenced": true
+    },
+    {
+     "track": "ai",
+     "label": "AI / ML Engineering",
+     "percent": 28,
+     "matched": [
+      "rag",
+      "pipelines",
+      "software",
+      "llm",
+      "api",
+      "production",
+      "demo",
+      "python",
+      "typescript",
+      "vector",
+      "search"
+     ],
+     "missing": [
+      "anywhere",
+      "evaluation",
+      "engineering",
+      "remote",
+      "tessellate",
+      "builds",
+      "retrieval",
+      "infrastructure",
+      "regulated",
+      "industries",
+      "teammates",
+      "countries",
+      "evaluate",
+      "against",
+      "customer",
+      "corpora",
+      "prompt",
+      "design",
+      "harness",
+      "honest"
+     ],
+     "evidenced": false
+    },
+    {
+     "track": "marketing",
+     "label": "Media Buying / Paid Ads",
+     "percent": 9,
+     "matched": [
+      "twelve",
+      "accounts"
+     ],
+     "missing": [
+      "meta",
+      "google",
+      "paid",
+      "remote",
+      "anywhere",
+      "germany",
+      "ads",
+      "400k",
+      "spend",
+      "nz-based",
+      "social",
+      "buying",
+      "e-commerce",
+      "brands",
+      "managing",
+      "media",
+      "budgets",
+      "above",
+      "annually",
+      "tiktok"
+     ],
+     "evidenced": false
+    },
+    {
+     "track": "game",
+     "label": "Game Development",
+     "percent": 23,
+     "matched": [
+      "shipped",
+      "studio",
+      "one"
+     ],
+     "missing": [
+      "four",
+      "title",
+      "remote",
+      "unity",
+      "mobile",
+      "published",
+      "unpaid",
+      "internship",
+      "course",
+      "credit"
+     ],
+     "evidenced": false
+    }
+   ],
+   "gaps": [
+    {
+     "track": "dev",
+     "label": "Full-stack / Software",
+     "coverage": 45,
+     "why": "Your resume already covers most of this track. These sharpen it.",
+     "questions": [
+      {
+       "key": "production",
+       "question": "Has anything you built been used by people who were not you? What, and by how many?"
+      },
+      {
+       "key": "stack",
+       "question": "What is the largest thing you have built, and what was the stack?"
+      },
+      {
+       "key": "collab",
+       "question": "Have you worked in a shared codebase — code review, branches, tickets?"
+      }
+     ]
+    },
+    {
+     "track": "ai",
+     "label": "AI / ML Engineering",
+     "coverage": 28,
+     "why": "Nothing in your uploaded resumes evidences this track. Without answers here, applications for it cannot be written honestly.",
+     "questions": [
+      {
+       "key": "built",
+       "question": "Which AI systems have you built end to end, and what did they do for a real user?"
+      },
+      {
+       "key": "models",
+       "question": "Which models and APIs have you worked against — Claude, GPT, open-weights, embeddings?"
+      },
+      {
+       "key": "depth",
+       "question": "Have you done retrieval, evals, fine-tuning, or agent tool-use in anything that ran beyond a demo?"
+      }
+     ]
+    },
+    {
+     "track": "marketing",
+     "label": "Media Buying / Paid Ads",
+     "coverage": 9,
+     "why": "Nothing in your uploaded resumes evidences this track. Without answers here, applications for it cannot be written honestly.",
+     "questions": [
+      {
+       "key": "platforms",
+       "question": "Which ad platforms have you actually run campaigns on? (Meta/Facebook, Google Ads, TikTok, LinkedIn, Snap…)"
+      },
+      {
+       "key": "spend",
+       "question": "What is the largest monthly ad spend you have personally managed, and in what currency?"
+      },
+      {
+       "key": "results",
+       "question": "Name one campaign and its numbers: ROAS, CPA, CTR, or revenue driven. A real figure beats a good adjective."
+      },
+      {
+       "key": "accounts",
+       "question": "Whose accounts were they — your own, an employer's, a client's, or a personal project?"
+      },
+      {
+       "key": "tools",
+       "question": "Which tools do you use: Ads Manager, GA4, Meta Pixel, Triple Whale, Google Tag Manager, spreadsheets?"
+      },
+      {
+       "key": "duration",
+       "question": "Over what period did you do this, and roughly how many hours a week?"
+      }
+     ]
+    },
+    {
+     "track": "game",
+     "label": "Game Development",
+     "coverage": 23,
+     "why": "Nothing in your uploaded resumes evidences this track. Without answers here, applications for it cannot be written honestly.",
+     "questions": [
+      {
+       "key": "engines",
+       "question": "Which engines have you actually built something in — Unity, Unreal, Godot?"
+      },
+      {
+       "key": "shipped",
+       "question": "What have you shipped or published, even a game jam entry or an itch.io page? Links help."
+      },
+      {
+       "key": "scope",
+       "question": "What did you build yourself versus follow a tutorial for? Be honest; this is the one an interviewer probes."
+      }
+     ]
+    }
+   ],
+   "uploads": [],
+   "answered": [],
+   "identity": {
+    "name": "Alex Rivera",
+    "headline": "Full-stack engineer · AI systems",
+    "email": "alex@example.com",
+    "phone": "+1 555 0100",
+    "linkedin": "linkedin.com/in/example",
+    "location": "Lisbon, Portugal",
+    "languages": [
+     "English (native)",
+     "Portuguese (conversational)"
+    ],
+    "source": "demo"
+   },
+   "readiness": {
+    "ready": true,
+    "missing": [],
+    "tracks": [
+     "dev",
+     "ai",
+     "marketing",
+     "game"
+    ],
+    "facts": 4
+   }
+  },
+  "/api/near-miss": [
+   {
+    "name": "Other",
+    "count": 7,
+    "sample": [
+     {
+      "id": 9,
+      "company": "Auckland Bright",
+      "title": "Media Buyer",
+      "eligibility": "no",
+      "eligibility_reason": "Location field says \"Remote (New Zealand)\"."
+     },
+     {
+      "id": 11,
+      "company": "Cresta Iberia",
+      "title": "AI Engineer",
+      "eligibility": "no",
+      "eligibility_reason": "Location field says \"Remote — EU timezones\", which is a region and not everywhere."
+     },
+     {
+      "id": 7,
+      "company": "Kestrel Health",
+      "title": "Full Stack Engineer",
+      "eligibility": "no",
+      "eligibility_reason": "Location field says \"Remote (United States)\". A stated place is a restriction."
+     },
+     {
+      "id": 5,
+      "company": "Orbit Study",
+      "title": "AI Automation Engineer",
+      "eligibility": "unclear",
+      "eligibility_reason": "Work from anywhere and the right level, but the posting publishes no salary."
+     },
+     {
+      "id": 6,
+      "company": "Palework",
+      "title": "Game Developer (Unity)",
+      "eligibility": "unclear",
+      "eligibility_reason": "Genuinely worldwide, but the fact bank has no shipped game to point at."
+     },
+     {
+      "id": 8,
+      "company": "Steinweg Digital",
+      "title": "Performance Marketing Manager",
+      "eligibility": "no",
+      "eligibility_reason": "Location field says \"Remote — Germany\"."
+     },
+     {
+      "id": 10,
+      "company": "Vantage Tokyo",
+      "title": "Backend Engineer",
+      "eligibility": "no",
+      "eligibility_reason": "Location field says \"Tokyo (hybrid)\" — two days a week in the office."
+     }
+    ]
+   },
+   {
+    "name": "Seniority",
+    "count": 2,
+    "sample": [
+     {
+      "id": 14,
+      "company": "Farrow Media",
+      "title": "Senior Media Buyer",
+      "eligibility": "no",
+      "eligibility_reason": "Wants 5+ years of paid media. The fact bank has none, and doNotClaim says so explicitly."
+     },
+     {
+      "id": 4,
+      "company": "Halcyon Systems",
+      "title": "Senior Full Stack Engineer",
+      "eligibility": "unclear",
+      "eligibility_reason": "Wants 6+ years; the fact bank evidences two. Pay also tops out above the band."
+     }
+    ]
+   },
+   {
+    "name": "Not full-time",
+    "count": 2,
+    "sample": [
+     {
+      "id": 13,
+      "company": "Lumen Interactive",
+      "title": "Unpaid Game Design Intern",
+      "eligibility": "no",
+      "eligibility_reason": "Posting says \"unpaid internship, 12 weeks, for course credit\"."
+     },
+     {
+      "id": 12,
+      "company": "Pellham Group",
+      "title": "Full Stack Developer (6 month contract)",
+      "eligibility": "no",
+      "eligibility_reason": "Posting says \"six month fixed-term contract, no extension planned\". Not full-time."
+     }
+    ]
+   }
+  ],
+  "/api/money?month=2026-09": {
+   "month": "2026-09",
+   "planned": true,
+   "currency": "EUR",
+   "symbol": "€",
+   "allocated": 3000,
+   "spent": 1433,
+   "left": 1567,
+   "closed": false,
+   "daysLeft": 13,
+   "daysInMonth": 30,
+   "perDay": 120.53846153846153,
+   "projected": 2528.823529411765,
+   "envelopes": [
+    {
+     "name": "invest",
+     "kind": "save",
+     "planned": 340,
+     "spent": 0
+    },
+    {
+     "name": "savings",
+     "kind": "save",
+     "planned": 900,
+     "spent": 0
+    },
+    {
+     "name": "food",
+     "kind": "spend",
+     "planned": 450,
+     "spent": 252
+    },
+    {
+     "name": "rent",
+     "kind": "spend",
+     "planned": 1100,
+     "spent": 1100
+    },
+    {
+     "name": "tools",
+     "kind": "spend",
+     "planned": 90,
+     "spent": 20
+    },
+    {
+     "name": "transport",
+     "kind": "spend",
+     "planned": 120,
+     "spent": 61
+    }
+   ],
+   "savingsRate": 41,
+   "recent": [
+    {
+     "id": 5,
+     "at": "2026-09-17T13:37:32.529Z",
+     "envelope": "transport",
+     "amount": 61,
+     "note": "metro pass"
+    },
+    {
+     "id": 4,
+     "at": "2026-09-17T13:37:32.529Z",
+     "envelope": "tools",
+     "amount": 20,
+     "note": "domain renewal"
+    },
+    {
+     "id": 3,
+     "at": "2026-09-17T13:37:32.529Z",
+     "envelope": "food",
+     "amount": 38,
+     "note": "coffee, week 2"
+    },
+    {
+     "id": 2,
+     "at": "2026-09-17T13:37:32.529Z",
+     "envelope": "food",
+     "amount": 214,
+     "note": "groceries"
+    },
+    {
+     "id": 1,
+     "at": "2026-09-17T13:37:32.529Z",
+     "envelope": "rent",
+     "amount": 1100,
+     "note": "September rent"
+    }
+   ],
+   "goals": [],
+   "assumedReturn": 0.08
+  },
+  "/api/job/1": {
+   "job": {
+    "id": 1,
+    "source": "demo",
+    "source_id": "demo-northwind-labs-0",
+    "company": "Northwind Labs",
+    "company_tier": "funded-startup",
+    "title": "Full Stack Engineer",
+    "url": "https://example.com/jobs/northwind-labs",
+    "apply_url": "https://example.com/jobs/northwind-labs/apply",
+    "location_raw": "Remote — Worldwide",
+    "employment_type": "FullTime",
+    "remote_scope": "worldwide",
+    "remote_detail": "Remote — Worldwide",
+    "salary_min": 85000,
+    "salary_max": 115000,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "salary_source": "parsed",
+    "posted_at": "2026-09-16T13:37:32.531Z",
+    "content": "We are a fully distributed team of 40 building developer tooling.\n\nWe hire anywhere in the world and have no headquarters. Contract of Employment is issued through our\nemployer of record in your country.\n\nWhat you will do\n- Own features end to end in TypeScript, React and Node.js\n- Design PostgreSQL schemas and the APIs on top of them\n- Share the on-call rotation with six other engineers\n\nRequirements\n- 2+ years shipping production web applications\n- Strong JavaScript and TypeScript\n- Comfortable with SQL and query performance\n- Docker, and enough CI to keep a pipeline green\n\nNice to have\n- Experience with retrieval-augmented generation\n- Open source contributions\n\nCompensation: $85,000 - $115,000 depending on location and experience.\nNew hire equity: $10,000 - $20,000 vesting over four years.",
+    "raw_json": null,
+    "discovered_at": "2026-09-17T13:37:32.529Z",
+    "updated_at": "2026-09-17T13:38:24.385Z",
+    "status": "tailored",
+    "score": 91,
+    "eligibility": "yes",
+    "eligibility_reason": "Posting says \"We hire anywhere in the world and have no headquarters.\"",
+    "eligibility_layer": "rules",
+    "reject_reason": null,
+    "track": "dev",
+    "tier": "match",
+    "hidden": 0,
+    "notes": null,
+    "payLabel": "$85k–$115k/yr"
+   },
+   "application": {
+    "id": 1,
+    "job_id": 1,
+    "packet_dir": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1",
+    "resume_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/Northwind_Labs_Alex_Rivera.pdf",
+    "cover_path": null,
+    "research_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/research.md",
+    "loom_script_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/loom/script.md",
+    "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/loom/slides.html",
+    "ats_coverage": 47,
+    "status": "awaiting_approval",
+    "created_at": "2026-09-17T13:37:32.806Z",
+    "approved_at": null,
+    "applied_at": null,
+    "notes": null,
+    "user_id": 0
+   },
+   "packet": {
+    "research": "research.md",
+    "resumePdf": "Northwind_Labs_Alex_Rivera.pdf",
+    "resumeJson": "resume.json",
+    "loomScript": "loom/script.md",
+    "loomSlides": "loom/slides.html",
+    "loomChecklist": "loom/checklist.md",
+    "jobText": "job.txt"
+   }
+  },
+  "/api/job/2": {
+   "job": {
+    "id": 2,
+    "source": "demo",
+    "source_id": "demo-tessellate-1",
+    "company": "Tessellate",
+    "company_tier": "funded-startup",
+    "title": "AI Engineer",
+    "url": "https://example.com/jobs/tessellate",
+    "apply_url": "https://example.com/jobs/tessellate/apply",
+    "location_raw": "Remote (Anywhere)",
+    "employment_type": "FullTime",
+    "remote_scope": "worldwide",
+    "remote_detail": "Remote (Anywhere)",
+    "salary_min": 95000,
+    "salary_max": 130000,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "salary_source": "parsed",
+    "posted_at": "2026-09-15T13:37:32.533Z",
+    "content": "Tessellate builds retrieval infrastructure for regulated industries.\n\nThis role is open to candidates anywhere in the world. We have teammates in 14 countries.\n\nYou will\n- Build and evaluate RAG pipelines against real customer corpora\n- Own prompt design and the evaluation harness that keeps it honest\n- Work directly with the two founders on what ships next\n\nWe are looking for\n- 2+ years of software engineering, any stack\n- Hands-on work with an LLM API in production, not just a demo\n- Python or TypeScript\n- Vector search: pgvector, Qdrant, or similar\n\nBase salary $95,000 - $130,000. Wellness stipend $1,200 per year.",
+    "raw_json": null,
+    "discovered_at": "2026-09-17T13:37:32.529Z",
+    "updated_at": "2026-09-17T13:39:42.573Z",
+    "status": "tailored",
+    "score": 88,
+    "eligibility": "yes",
+    "eligibility_reason": "Posting says \"This role is open to candidates anywhere in the world.\"",
+    "eligibility_layer": "rules",
+    "reject_reason": null,
+    "track": "ai",
+    "tier": "match",
+    "hidden": 0,
+    "notes": null,
+    "payLabel": "$95k–$130k/yr"
+   },
+   "application": {
+    "id": 2,
+    "job_id": 2,
+    "packet_dir": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2",
+    "resume_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/Tessellate_Alex_Rivera.pdf",
+    "cover_path": null,
+    "research_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/research.md",
+    "loom_script_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/loom/script.md",
+    "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/loom/slides.html",
+    "ats_coverage": 13,
+    "status": "awaiting_approval",
+    "created_at": "2026-09-17T13:38:41.429Z",
+    "approved_at": null,
+    "applied_at": null,
+    "notes": null,
+    "user_id": 0
+   },
+   "packet": {
+    "research": "research.md",
+    "resumePdf": "Tessellate_Alex_Rivera.pdf",
+    "resumeJson": "resume.json",
+    "loomScript": "loom/script.md",
+    "loomSlides": "loom/slides.html",
+    "loomChecklist": "loom/checklist.md",
+    "jobText": "job.txt"
+   }
+  },
+  "/api/job/3": {
+   "job": {
+    "id": 3,
+    "source": "demo",
+    "source_id": "demo-broadfin-2",
+    "company": "Broadfin",
+    "company_tier": "brand",
+    "title": "Frontend Engineer",
+    "url": "https://example.com/jobs/broadfin",
+    "apply_url": "https://example.com/jobs/broadfin/apply",
+    "location_raw": "Fully remote, worldwide",
+    "employment_type": "FullTime",
+    "remote_scope": "worldwide",
+    "remote_detail": "Fully remote, worldwide",
+    "salary_min": 78000,
+    "salary_max": 96000,
+    "salary_currency": "USD",
+    "salary_period": "year",
+    "salary_source": "parsed",
+    "posted_at": "2026-09-14T13:37:32.533Z",
+    "content": "Broadfin is a payments company serving 90,000 small businesses.\n\nWe are remote-first and hire globally, with no location requirement.\n\nThe work\n- React and TypeScript across our merchant dashboard\n- Design system ownership alongside two designers\n- Accessibility to WCAG 2.2 AA, which we treat as a requirement and not a nice to have\n\nYou should have\n- 2+ years of frontend work in a component framework\n- Real CSS skill, not just utility classes\n- An eye for performance budgets\n\n$78,000 - $96,000 plus equity.",
+    "raw_json": null,
+    "discovered_at": "2026-09-17T13:37:32.529Z",
+    "updated_at": "2026-09-17T13:40:45.707Z",
+    "status": "tailored",
+    "score": 84,
+    "eligibility": "yes",
+    "eligibility_reason": "Posting says \"we are remote-first and hire globally, with no location requirement.\"",
+    "eligibility_layer": "rules",
+    "reject_reason": null,
+    "track": "dev",
+    "tier": "match",
+    "hidden": 0,
+    "notes": null,
+    "payLabel": "$78k–$96k/yr"
+   },
+   "application": {
+    "id": 3,
+    "job_id": 3,
+    "packet_dir": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3",
+    "resume_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/Broadfin_Alex_Rivera.pdf",
+    "cover_path": null,
+    "research_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/research.md",
+    "loom_script_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/loom/script.md",
+    "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/loom/slides.html",
+    "ats_coverage": 13,
+    "status": "awaiting_approval",
+    "created_at": "2026-09-17T13:39:56.231Z",
+    "approved_at": null,
+    "applied_at": null,
+    "notes": null,
+    "user_id": 0
+   },
+   "packet": {
+    "research": "research.md",
+    "resumePdf": "Broadfin_Alex_Rivera.pdf",
+    "resumeJson": "resume.json",
+    "loomScript": "loom/script.md",
+    "loomSlides": "loom/slides.html",
+    "loomChecklist": "loom/checklist.md",
+    "jobText": "job.txt"
+   }
+  }
+ },
+ "jobs": [
+  {
+   "id": 1,
+   "company": "Northwind Labs",
+   "company_tier": "funded-startup",
+   "title": "Full Stack Engineer",
+   "url": "https://example.com/jobs/northwind-labs",
+   "apply_url": "https://example.com/jobs/northwind-labs/apply",
+   "location_raw": "Remote — Worldwide",
+   "salary_min": 85000,
+   "salary_max": 115000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 91,
+   "status": "tailored",
+   "eligibility": "yes",
+   "eligibility_reason": "Posting says \"We hire anywhere in the world and have no headquarters.\"",
+   "posted_at": "2026-09-16T13:37:32.531Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "match",
+   "usd_min": 85000,
+   "usd_max": 115000,
+   "app_id": 1,
+   "ats": 47,
+   "approved_at": null,
+   "payLabel": "$85k–$115k/yr"
+  },
+  {
+   "id": 2,
+   "company": "Tessellate",
+   "company_tier": "funded-startup",
+   "title": "AI Engineer",
+   "url": "https://example.com/jobs/tessellate",
+   "apply_url": "https://example.com/jobs/tessellate/apply",
+   "location_raw": "Remote (Anywhere)",
+   "salary_min": 95000,
+   "salary_max": 130000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 88,
+   "status": "tailored",
+   "eligibility": "yes",
+   "eligibility_reason": "Posting says \"This role is open to candidates anywhere in the world.\"",
+   "posted_at": "2026-09-15T13:37:32.533Z",
+   "source": "demo",
+   "track": "ai",
+   "tier": "match",
+   "usd_min": 95000,
+   "usd_max": 130000,
+   "app_id": 2,
+   "ats": 13,
+   "approved_at": null,
+   "payLabel": "$95k–$130k/yr"
+  },
+  {
+   "id": 3,
+   "company": "Broadfin",
+   "company_tier": "brand",
+   "title": "Frontend Engineer",
+   "url": "https://example.com/jobs/broadfin",
+   "apply_url": "https://example.com/jobs/broadfin/apply",
+   "location_raw": "Fully remote, worldwide",
+   "salary_min": 78000,
+   "salary_max": 96000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 84,
+   "status": "tailored",
+   "eligibility": "yes",
+   "eligibility_reason": "Posting says \"we are remote-first and hire globally, with no location requirement.\"",
+   "posted_at": "2026-09-14T13:37:32.533Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "match",
+   "usd_min": 78000,
+   "usd_max": 96000,
+   "app_id": 3,
+   "ats": 13,
+   "approved_at": null,
+   "payLabel": "$78k–$96k/yr"
+  },
+  {
+   "id": 4,
+   "company": "Halcyon Systems",
+   "company_tier": "brand",
+   "title": "Senior Full Stack Engineer",
+   "url": "https://example.com/jobs/halcyon-systems",
+   "apply_url": "https://example.com/jobs/halcyon-systems/apply",
+   "location_raw": "Remote — Global",
+   "salary_min": 140000,
+   "salary_max": 175000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 72,
+   "status": "rejected",
+   "eligibility": "unclear",
+   "eligibility_reason": "Wants 6+ years; the fact bank evidences two. Pay also tops out above the band.",
+   "posted_at": "2026-09-13T13:37:32.534Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "stretch",
+   "usd_min": 140000,
+   "usd_max": 175000,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": "$140k–$175k/yr"
+  },
+  {
+   "id": 5,
+   "company": "Orbit Study",
+   "company_tier": "funded-startup",
+   "title": "AI Automation Engineer",
+   "url": "https://example.com/jobs/orbit-study",
+   "apply_url": "https://example.com/jobs/orbit-study/apply",
+   "location_raw": "Remote, anywhere",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 69,
+   "status": "rejected",
+   "eligibility": "unclear",
+   "eligibility_reason": "Work from anywhere and the right level, but the posting publishes no salary.",
+   "posted_at": "2026-09-12T13:37:32.534Z",
+   "source": "demo",
+   "track": "ai",
+   "tier": "stretch",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 6,
+   "company": "Palework",
+   "company_tier": "watch",
+   "title": "Game Developer (Unity)",
+   "url": "https://example.com/jobs/palework",
+   "apply_url": "https://example.com/jobs/palework/apply",
+   "location_raw": "Remote worldwide",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 58,
+   "status": "rejected",
+   "eligibility": "unclear",
+   "eligibility_reason": "Genuinely worldwide, but the fact bank has no shipped game to point at.",
+   "posted_at": "2026-09-11T13:37:32.535Z",
+   "source": "demo",
+   "track": "game",
+   "tier": "stretch",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 14,
+   "company": "Farrow Media",
+   "company_tier": "watch",
+   "title": "Senior Media Buyer",
+   "url": "https://example.com/jobs/farrow-media",
+   "apply_url": "https://example.com/jobs/farrow-media/apply",
+   "location_raw": "Remote worldwide",
+   "salary_min": 90000,
+   "salary_max": 120000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Wants 5+ years of paid media. The fact bank has none, and doNotClaim says so explicitly.",
+   "posted_at": "2026-09-03T13:37:32.540Z",
+   "source": "demo",
+   "track": "marketing",
+   "tier": "no",
+   "usd_min": 90000,
+   "usd_max": 120000,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": "$90k–$120k/yr"
+  },
+  {
+   "id": 13,
+   "company": "Lumen Interactive",
+   "company_tier": "unknown",
+   "title": "Unpaid Game Design Intern",
+   "url": "https://example.com/jobs/lumen-interactive",
+   "apply_url": "https://example.com/jobs/lumen-interactive/apply",
+   "location_raw": "Remote",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Posting says \"unpaid internship, 12 weeks, for course credit\".",
+   "posted_at": "2026-09-04T13:37:32.540Z",
+   "source": "demo",
+   "track": "game",
+   "tier": "no",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 12,
+   "company": "Pellham Group",
+   "company_tier": "unknown",
+   "title": "Full Stack Developer (6 month contract)",
+   "url": "https://example.com/jobs/pellham-group",
+   "apply_url": "https://example.com/jobs/pellham-group/apply",
+   "location_raw": "Remote worldwide",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Posting says \"six month fixed-term contract, no extension planned\". Not full-time.",
+   "posted_at": "2026-09-05T13:37:32.539Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "no",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 11,
+   "company": "Cresta Iberia",
+   "company_tier": "funded-startup",
+   "title": "AI Engineer",
+   "url": "https://example.com/jobs/cresta-iberia",
+   "apply_url": "https://example.com/jobs/cresta-iberia/apply",
+   "location_raw": "Remote — EU timezones",
+   "salary_min": 70000,
+   "salary_max": 90000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Location field says \"Remote — EU timezones\", which is a region and not everywhere.",
+   "posted_at": "2026-09-06T13:37:32.538Z",
+   "source": "demo",
+   "track": "ai",
+   "tier": "regional",
+   "usd_min": 70000,
+   "usd_max": 90000,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": "$70k–$90k/yr"
+  },
+  {
+   "id": 10,
+   "company": "Vantage Tokyo",
+   "company_tier": "brand",
+   "title": "Backend Engineer",
+   "url": "https://example.com/jobs/vantage-tokyo",
+   "apply_url": "https://example.com/jobs/vantage-tokyo/apply",
+   "location_raw": "Tokyo (hybrid)",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Location field says \"Tokyo (hybrid)\" — two days a week in the office.",
+   "posted_at": "2026-09-07T13:37:32.538Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "regional",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 9,
+   "company": "Auckland Bright",
+   "company_tier": "watch",
+   "title": "Media Buyer",
+   "url": "https://example.com/jobs/auckland-bright",
+   "apply_url": "https://example.com/jobs/auckland-bright/apply",
+   "location_raw": "Remote (New Zealand)",
+   "salary_min": null,
+   "salary_max": null,
+   "salary_currency": null,
+   "salary_period": null,
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Location field says \"Remote (New Zealand)\".",
+   "posted_at": "2026-09-08T13:37:32.537Z",
+   "source": "demo",
+   "track": "marketing",
+   "tier": "regional",
+   "usd_min": null,
+   "usd_max": null,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": null
+  },
+  {
+   "id": 8,
+   "company": "Steinweg Digital",
+   "company_tier": "watch",
+   "title": "Performance Marketing Manager",
+   "url": "https://example.com/jobs/steinweg-digital",
+   "apply_url": "https://example.com/jobs/steinweg-digital/apply",
+   "location_raw": "Remote — Germany",
+   "salary_min": 55000,
+   "salary_max": 70000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Location field says \"Remote — Germany\".",
+   "posted_at": "2026-09-09T13:37:32.536Z",
+   "source": "demo",
+   "track": "marketing",
+   "tier": "regional",
+   "usd_min": 55000,
+   "usd_max": 70000,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": "$55k–$70k/yr"
+  },
+  {
+   "id": 7,
+   "company": "Kestrel Health",
+   "company_tier": "funded-startup",
+   "title": "Full Stack Engineer",
+   "url": "https://example.com/jobs/kestrel-health",
+   "apply_url": "https://example.com/jobs/kestrel-health/apply",
+   "location_raw": "Remote (United States)",
+   "salary_min": 110000,
+   "salary_max": 140000,
+   "salary_currency": "USD",
+   "salary_period": "year",
+   "score": 0,
+   "status": "rejected",
+   "eligibility": "no",
+   "eligibility_reason": "Location field says \"Remote (United States)\". A stated place is a restriction.",
+   "posted_at": "2026-09-10T13:37:32.536Z",
+   "source": "demo",
+   "track": "dev",
+   "tier": "regional",
+   "usd_min": 110000,
+   "usd_max": 140000,
+   "app_id": null,
+   "ats": null,
+   "approved_at": null,
+   "payLabel": "$110k–$140k/yr"
+  }
+ ]
+};
+
+// jobList() does its filtering in SQL. Re-doing it here is what makes the tier chips, the track
+// chips, the salary range and the sort actually work instead of returning the same page every time.
+function demoJobs(qs) {
+  const q = Object.fromEntries(new URLSearchParams(qs));
+  let rows = DEMO.jobs.slice();
+  if (q.tier) { const t = q.tier.split(','); rows = rows.filter((r) => t.includes(r.tier)); }
+  if (q.track) { const t = q.track.split(','); rows = rows.filter((r) => t.includes(r.track)); }
+  if (q.eligibility) rows = rows.filter((r) => r.eligibility === q.eligibility);
+  if (q.status) rows = rows.filter((r) => r.status === q.status);
+  if (q.company) rows = rows.filter((r) => (r.company || '').toLowerCase().includes(q.company.toLowerCase()));
+  const min = Number(q.salaryMin) || 0, max = Number(q.salaryMax) || 0;
+  if (min || max) {
+    rows = rows.filter((r) => {
+      if (r.salary_min == null) return q.unknownSalary !== '0';
+      return (!min || (r.usd_max ?? r.usd_min) >= min) && (!max || r.usd_min <= max);
+    });
+  } else if (q.unknownSalary === '0') rows = rows.filter((r) => r.salary_min != null);
+  rows.sort(q.sort === 'pay' ? (a, b) => (b.usd_max ?? -1) - (a.usd_max ?? -1)
+    : q.sort === 'new' ? (a, b) => String(b.posted_at).localeCompare(String(a.posted_at))
+    : (a, b) => (b.score ?? -1) - (a.score ?? -1) || b.id - a.id);
+  const offset = Number(q.offset) || 0, limit = Number(q.limit) || 60;
+  return { total: rows.length, offset, limit, rows: rows.slice(offset, offset + limit) };
+}
+
+const DEMO_WRITE = { ok: false, demo: true,
+  error: 'This is the public demo, so it is read-only. Clone the repo to run the real thing.' };
+
+const realFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (!url.startsWith('/api/')) return realFetch(input, init);
+  const reply = (body) => new Response(JSON.stringify(body),
+    { status: 200, headers: { 'content-type': 'application/json' } });
+
+  if ((init.method || 'GET').toUpperCase() !== 'GET') {
+    // Writes are the one place a demo must not pretend. Recording an approval or a spend as if it
+    // had happened would be teaching the page to lie about the only thing this system guards.
+    return reply(DEMO_WRITE);
+  }
+  const [path, qs = ''] = url.split('?');
+  if (path === '/api/jobs') return reply(demoJobs(qs));
+  const exact = DEMO.snapshot[url] ?? DEMO.snapshot[path];
+  if (exact !== undefined) return reply(exact);
+  if (path.startsWith('/api/money')) return reply(DEMO.snapshot['/api/money?month=2026-09']);
+  return reply({ error: 'Not part of the demo snapshot.', demo: true });
+};
+</script>
+<style>
+/* The app's body is a flex row that fills the viewport, so a banner placed inside it becomes a
+   third column next to the sidebar. It has to sit outside the flow and the body has to make room
+   for it. */
+#demobar {
+  position: fixed; inset: 0 0 auto 0; z-index: 9999; height: 36px;
+  display: flex; gap: 9px; align-items: center; white-space: nowrap; overflow: hidden;
+  padding: 0 16px; font: 500 12.5px/36px Inter, system-ui, sans-serif;
+  color: #16233a; background: linear-gradient(90deg, #ffd79a, #ffc978);
+  border-bottom: 1px solid rgba(0,0,0,.16);
+}
+#demobar b { font-weight: 700; }
+#demobar span { overflow: hidden; text-overflow: ellipsis; }
+#demobar a { color: #16233a; margin-left: auto; padding-left: 14px; font-weight: 600; }
+body { padding-top: 36px; box-sizing: border-box; }
+</style>
 </head>
 <body>
+<div id="demobar">
+  <b>Demo.</b>
+  <span>Invented candidate, invented jobs, read-only. The code is real: every number here came from
+  the actual server, recorded at build time.</span>
+  
+</div>
+
 
 <div id="gate" hidden>
   <div class="gate-card">
@@ -847,7 +2585,7 @@ async function openJob(id, { apply = false } = {}) {
   scrim.onclick = close;
 
   const f = (label, path, ok) => ok
-    ? `<a class="file" href="/packet/${id}/${path}" target="_blank"><span>${label}</span><span>open →</span></a>`
+    ? `<a class="file" href="packet/${id}/${path}" target="_blank"><span>${label}</span><span>open →</span></a>`
     : `<div class="file"><span class="miss">${label}</span><span class="miss">not built yet</span></div>`;
 
   el.innerHTML = `
@@ -873,9 +2611,9 @@ async function openJob(id, { apply = false } = {}) {
         <span>Download the deck</span>
         <span style="display:flex;gap:8px">
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
-             href="/api/slides/${id}/pdf" download>PDF</a>
+             href="packet/${id}/loom/slides.pdf" download>PDF</a>
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
-             href="/api/slides/${id}/pptx" download>PowerPoint</a>
+             href="packet/${id}/loom/slides.pptx" download>PowerPoint</a>
         </span></div>` : ''}
       ${f('Recording checklist', 'loom/checklist.md', pk?.loomChecklist)}
       ${f('Job description', 'job.txt', pk?.jobText)}
@@ -919,7 +2657,7 @@ async function openJob(id, { apply = false } = {}) {
           <a class="act" href="${esc(pack.job.apply_url)}" target="_blank" style="text-decoration:none">Open application page ↗</a>
           <a class="act ghost" href="${pack.bookmarklet}" onclick="return false" draggable="true"
              style="text-decoration:none;cursor:grab" title="Drag me to your bookmarks bar">⇱ Fill this form</a>
-          ${pack.resume ? `<a class="act ghost" href="/packet/${id}/${encodeURIComponent(pack.resume)}" download style="text-decoration:none">Download resume PDF</a>` : ''}
+          ${pack.resume ? `<a class="act ghost" href="packet/${id}/${encodeURIComponent(pack.resume)}" download style="text-decoration:none">Download resume PDF</a>` : ''}
         </div>
         ${!pack.approved ? `<p style="color:var(--warn)"><b>Not approved yet.</b> You can still fill the form, but approve it below so the pipeline records the decision.</p>` : ''}
         <h3 style="margin-top:16px">Answer sheet</h3>

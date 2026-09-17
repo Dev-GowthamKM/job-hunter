@@ -12,7 +12,7 @@
 //   pbpaste | node src/jobs/ingest.mjs --stdin --title="Media Buyer" --company="Acme"
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, upsertJob, setJobVerdict, logEvent } from '../db.mjs';
+import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent } from '../db.mjs';
 import { fetchWithRetry, stripHtml } from '../sources/_util.mjs';
 import { screen, roleRelevant } from './eligibility.mjs';
 import { scoreJob } from './score.mjs';
@@ -134,7 +134,7 @@ export async function ingest({ url, text, title, company }) {
     );
   }
 
-  const cand = JSON.parse(readFileSync(join(ROOT, 'config', 'candidate.json'), 'utf8'));
+  const cand = JSON.parse(readFileSync(join(CONFIG, 'candidate.json'), 'utf8'));
   const record = {
     source: 'manual',
     source_id: `manual:${url || title}:${Date.now()}`,

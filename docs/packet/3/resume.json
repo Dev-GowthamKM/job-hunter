@@ -1,0 +1,68 @@
+{
+  "_instructions": "Select and rephrase from data/resume/master.json ONLY. Every bullet must trace to a fact there. Do not invent employers, dates, metrics or skills.",
+  "_track": "dev",
+  "identity": {
+    "name": "Alex Rivera",
+    "headline": "Full-stack engineer · AI systems",
+    "email": "alex@example.com",
+    "phone": "+1 555 0100",
+    "linkedin": "linkedin.com/in/example",
+    "location": "Lisbon, Portugal",
+    "languages": [
+      "English (native)",
+      "Portuguese (conversational)"
+    ],
+    "source": "demo"
+  },
+  "summary": "Full-stack engineer with two years building production web applications, moving toward applied AI work. Comfortable owning a feature from schema to deploy.",
+  "skills": [
+    "TypeScript",
+    "React",
+    "JavaScript",
+    "Node.js",
+    "PostgreSQL",
+    "Docker",
+    "REST APIs",
+    "LLM prompting",
+    "Retrieval-augmented generation",
+    "OpenAI API",
+    "Vector search"
+  ],
+  "experience": [
+    {
+      "title": "Software Engineer",
+      "company": "Meridian Software",
+      "dates": "2024-03 – present",
+      "bullets": [
+        "Built the customer-facing billing dashboard in React and Node, used by 4,000 accounts.",
+        "Cut median API response time from 800ms to 180ms by adding covering indexes and removing N+1 queries."
+      ]
+    },
+    {
+      "title": "Junior Developer",
+      "company": "Hollow Pine Studio",
+      "dates": "2023-01 – 2024-02",
+      "bullets": [
+        "Shipped twelve client marketing sites on a shared component library.",
+        "Automated the deploy pipeline, taking a release from forty minutes of manual steps to one command."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Ledgerline",
+      "sub": "Side project",
+      "bullets": [
+        "A double-entry bookkeeping API with zero runtime dependencies."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "credential": "BSc Computer Science",
+      "institution": "University of Coimbra",
+      "dates": "2019 – 2023",
+      "sub": "16/20"
+    }
+  ]
+}

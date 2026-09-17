@@ -1,0 +1,20 @@
+Tessellate — AI Engineer
+https://example.com/jobs/tessellate
+Remote (Anywhere)
+
+Tessellate builds retrieval infrastructure for regulated industries.
+
+This role is open to candidates anywhere in the world. We have teammates in 14 countries.
+
+You will
+- Build and evaluate RAG pipelines against real customer corpora
+- Own prompt design and the evaluation harness that keeps it honest
+- Work directly with the two founders on what ships next
+
+We are looking for
+- 2+ years of software engineering, any stack
+- Hands-on work with an LLM API in production, not just a demo
+- Python or TypeScript
+- Vector search: pgvector, Qdrant, or similar
+
+Base salary $95,000 - $130,000. Wellness stipend $1,200 per year.
