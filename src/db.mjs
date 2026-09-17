@@ -426,6 +426,32 @@ export function sentToday() {
 }
 
 /** Insert a scouted job. Returns 'inserted' or 'duplicate'. Dedupe is on source_id. */
+/**
+ * One date format in the database, whatever the board sent.
+ *
+ * Boards disagree: Greenhouse sends ISO, Lever sends epoch milliseconds, Himalayas sends epoch
+ * seconds as a float in a string - "1789188343.0". Most adapters pass the value straight through,
+ * so 117 postings had that string sitting in posted_at where a date belongs. The dashboard printed
+ * it verbatim, and sorting by newest compared it as text against "2026-09-12", which is not a
+ * comparison that means anything.
+ *
+ * Normalising in each adapter would fix the boards we have looked at and miss the next one, so it
+ * happens here, at the one place every posting passes through.
+ */
+export function toIsoDate(v) {
+  if (v == null || v === '') return null;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s;              // already a date
+  if (/^\d{9,13}(\.\d+)?$/.test(s)) {                       // epoch, seconds or milliseconds
+    const n = Number(s);
+    const ms = n > 1e12 ? n : n * 1000;                      // 1e12 ms is 2001; anything under is seconds
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const d = new Date(s);                                     // RFC 2822 and friends
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export function upsertJob(job) {
   const d = db();
   const existing = d.prepare('SELECT id FROM jobs WHERE source_id = ?').get(job.source_id);
@@ -441,7 +467,7 @@ export function upsertJob(job) {
     job.url ?? null, job.apply_url ?? null, job.location_raw ?? null,
     job.employment_type ?? 'unknown', job.remote_scope ?? 'unknown', job.remote_detail ?? null,
     job.salary_min ?? null, job.salary_max ?? null, job.salary_currency ?? null,
-    job.salary_period ?? null, job.salary_source ?? 'unknown', job.posted_at ?? null,
+    job.salary_period ?? null, job.salary_source ?? 'unknown', toIsoDate(job.posted_at),
     job.content ?? null, job.raw ? JSON.stringify(job.raw) : null, job.track ?? null, now(), now()
   );
   return { result: 'inserted', id: Number(info.lastInsertRowid) };

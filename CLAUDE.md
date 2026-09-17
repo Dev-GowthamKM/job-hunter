@@ -266,6 +266,16 @@ Himalayas 40 cursor pages. A deep run is ~16,000 postings and takes about 14 min
 
 **Before concluding a filter is too strict, check what the sources actually returned.**
 
+# Boards disagree about what a date is
+
+Greenhouse sends ISO, Lever sends epoch milliseconds, Himalayas sends epoch **seconds as a float in
+a string** - `"1789188343.0"`. Most adapters passed the value straight through, so 117 postings had
+that string sitting in `posted_at`. The dashboard printed it verbatim and "sort by newest" compared
+it as text against `"2026-09-12"`, which put the two newest eligible jobs at the bottom of the list.
+
+`toIsoDate()` in `src/db.mjs` normalises in `upsertJob`, not in each adapter - fixing the adapters
+fixes the boards already looked at and misses the next one.
+
 # Geography: never match against a list of place names
 
 Two versions of this were wrong. A region list knew Canada and Poland but not Armenia or Serbia. A
