@@ -319,6 +319,31 @@ it as text against `"2026-09-12"`, which put the two newest eligible jobs at the
 `toIsoDate()` in `src/db.mjs` normalises in `upsertJob`, not in each adapter - fixing the adapters
 fixes the boards already looked at and misses the next one.
 
+# A global word only means everywhere when it is the only thing the field says
+
+Elastic writes `Canada | Distributed, Global` and `United States | Distributed, Global`, meaning a
+role in that country on a globally distributed team. The global-token-first check read the
+`Global`, stopped, and put **44 country-locked roles into match and stretch** — the tiers that say
+"apply to these". Same lesson as the perks line that overrode a stated location: when the board
+names a place, the board wins, even when it names a place and says "global" in the same breath.
+
+The check is `namesAPlaceBesidesGlobal()`, and it **tokenises rather than strips**. Stripping words
+one at a time meant "Fully remote, worldwide" left `Fully`, "100% remote, worldwide" left `100%`,
+and "anywhere in the world" left `in` — each read as a place name, and each fix revealed the next.
+Letters only, and anything not in `NON_PLACE` is somewhere.
+
+# A timezone list is numbers, and the numbers are the meaning
+
+Boards append `timezones: -11, -10, … 12.75` to the location. That list is every offset on earth
+and *confirms* worldwide — but `timezones` is a word, so reading the field as text saw a place name
+and rejected eight genuinely global roles. Caught by re-screening real data after the fix above,
+not by reasoning.
+
+Read as numbers it is better than harmless. **45 postings in the current database are pinned to a
+narrow band** and used to read as "Worldwide": 18 to UTC+1 alone, 12 to the Americas. Six sit at
+UTC+5.5, which is where the owner is, and those are now labelled as including India rather than
+lost. `readTimezones()` strips the clause before any text check and rules on the span.
+
 # Geography: never match against a list of place names
 
 Two versions of this were wrong. A region list knew Canada and Poland but not Armenia or Serbia. A

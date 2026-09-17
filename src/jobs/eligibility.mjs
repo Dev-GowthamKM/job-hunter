@@ -50,6 +50,62 @@ const GEO_REJECT = [
 // where you are allowed to live - that is marketing copy, and treating it as an eligibility signal
 // was letting UK-only and US-only roles through as "worldwide".
 const LOC_GLOBAL = /\b(?:worldwide|anywhere|global(?:ly)?)\b/i;
+// Same words, global flag, for stripping every occurrence rather than testing for one.
+const LOC_GLOBAL_ALL = /\b(?:worldwide|anywhere|global(?:ly)?)\b/gi;
+
+// Words that carry no geography: the remote vocabulary, plus ordinary grammar. Everything here is
+// either a way of saying "not in an office" or a word that cannot be a place on its own.
+const NON_PLACE = new Set([
+  'remote', 'remotely', 'flexible', 'distributed', 'home', 'based', 'wfh', 'hybridless', 'virtual',
+  'work', 'working', 'from', 'anywhere', 'worldwide', 'global', 'globally', 'world', 'international',
+  'fully', 'entirely', 'completely', 'truly', 'open', 'first', 'friendly', 'any', 'all',
+  'in', 'the', 'of', 'at', 'to', 'and', 'or', 'for', 'on', 'with', 'within', 'across', 'a', 'an',
+  'is', 'are', 'be', 'our', 'we', 'you', 'your', 'this', 'that', 'role', 'position', 'job', 'team',
+  'n', 'na', 'none', 'unspecified', 'other', 'locations', 'location', 'office', 'offices',
+]);
+
+const IST_OFFSET = 5.5;                    // where the owner is, in UTC terms
+
+/**
+ * A timezone list is numbers, and the numbers are the meaning.
+ *
+ * Boards append things like "timezones: -11, -10, ... 12.75" to the location. That particular list
+ * is every offset on earth and CONFIRMS worldwide, but the word "timezones" is a word, so a
+ * text-only reading of the field saw a place name and rejected eight genuinely global roles.
+ *
+ * Read properly it is better than harmless, it is signal the filter was throwing away: 18 postings
+ * in the current database are pinned to UTC+1 alone and 12 to the Americas, all of which read as
+ * "Worldwide" before. Six sit at UTC+5.5, which is exactly where the owner is.
+ *
+ * Returns null when there is no list to read.
+ */
+function readTimezones(loc) {
+  const m = /timezones?\s*:?\s*([-\d][-\d.,\s]*)/i.exec(loc);
+  if (!m) return null;
+  const tz = m[1].split(',').map((x) => parseFloat(x)).filter((n) => !Number.isNaN(n));
+  if (!tz.length) return null;
+  const lo = Math.min(...tz), hi = Math.max(...tz);
+  return {
+    text: m[0],
+    // Spanning the Pacific in both directions is not a restriction, it is a list of everywhere.
+    global: tz.length >= 20 || (lo <= -8 && hi >= 10),
+    includesOwner: tz.some((n) => Math.abs(n - IST_OFFSET) < 0.01),
+    label: tz.length === 1 ? `UTC${lo >= 0 ? '+' : ''}${lo}` : `UTC${lo >= 0 ? '+' : ''}${lo} to UTC${hi >= 0 ? '+' : ''}${hi}`,
+  };
+}
+
+/**
+ * Does a location field name somewhere, despite also containing a global word?
+ *
+ * Tokenising beats stripping. Stripping words one at a time meant "Fully remote, worldwide" left
+ * "Fully", "100% remote, worldwide" left "100%", and "anywhere in the world" left "in" - each one
+ * then read as a place name, and each fix revealed the next. Letters only, and anything that is
+ * not a known non-place word is somewhere.
+ */
+function namesAPlaceBesidesGlobal(loc) {
+  const words = String(loc).toLowerCase().match(/[a-z][a-z.]*/g) || [];
+  return words.some((w) => !NON_PLACE.has(w.replace(/\.+$/, '')));
+}
 
 // Phrases strong enough to trust in body prose, because they are statements about hiring, not
 // about the company's customers or its self-image.
@@ -108,19 +164,48 @@ export function classifyRemote(job) {
 
   // "Remote - Anywhere" is generic AND global, and the global half is the answer. Checking generic
   // first swallowed it and sent a genuinely worldwide role off to be guessed at from body prose.
-  if (loc && LOC_GLOBAL.test(loc)) {
-    return { scope: 'worldwide', label: 'location-field-global', quote: loc.slice(0, 140) };
+  //
+  // But a global word only means everywhere when it is the ONLY thing the field says. Elastic
+  // writes "Canada | Distributed, Global" and "United States | Distributed, Global", meaning a
+  // role in that country on a globally distributed team - and reading the "Global" and stopping
+  // put 44 country-locked roles into the tiers that say "apply to these". Same lesson as the
+  // perks line that overrode a stated location: when the board names a place, the board wins,
+  // even when it names a place and says "global" in the same breath.
+  //
+  // So: take the global and generic words out, and see whether anything is left.
+  // The timezone clause is read as numbers and then taken out of the text, because everything
+  // below this point reads the field as words and "timezones" is a word.
+  const tz = readTimezones(loc);
+  const locText = tz ? loc.replace(tz.text, ' ').replace(/\s*\|\s*$/, '').trim() : loc;
+
+  if (tz && !tz.global) {
+    // A narrow band is a restriction, and which band decides whether it is his restriction.
+    if (tz.includesOwner) {
+      return { scope: 'region', label: 'location-includes-india', quote: `${tz.label} — includes IST` };
+    }
+    return { scope: 'country', label: 'timezone-restricted', quote: `${tz.label}, and he is UTC+5.5` };
   }
+
+  if (locText && LOC_GLOBAL.test(locText)) {
+    if (!namesAPlaceBesidesGlobal(locText)) {
+      return { scope: 'worldwide', label: 'location-field-global', quote: loc.slice(0, 140) };
+    }
+    // Something specific survived, so the field is naming somewhere after all. Fall through to the
+    // place-wins branch below rather than deciding here.
+  }
+
   // A location field that only says "Remote" carries no geography; anything else does.
-  const genericLoc = !loc || /^(?:\s*(?:remote|flexible|n\/?a|home based|distributed)\s*[|,\/-]?\s*)+$/i.test(loc);
+  const genericLoc = !locText || /^(?:\s*(?:remote|flexible|n\/?a|home based|distributed)\s*[|,\/-]?\s*)+$/i.test(locText);
 
   // 2. The location field, read as data. When it names a place, it is the answer - a perks section
   //    saying "work from anywhere" cannot widen a role the board already pinned to a region.
   if (!genericLoc) {
-    if (ONSITE_TOKENS.test(loc) && !LOC_GLOBAL.test(loc)) {
+    // Tests read locText, quotes show loc: the timezone clause must not be mistaken for a place,
+    // but the owner should still see the whole field the board published.
+    if (ONSITE_TOKENS.test(locText) && !LOC_GLOBAL.test(locText)) {
       return { scope: 'onsite', label: 'location-field-onsite', quote: loc.slice(0, 140) };
     }
-    if (INDIA_TOKENS.test(loc)) return { scope: 'region', label: 'location-includes-india', quote: loc.slice(0, 140) };
+    if (INDIA_TOKENS.test(locText)) return { scope: 'region', label: 'location-includes-india', quote: loc.slice(0, 140) };
 
     // Anything else specific in a location field IS a restriction.
     //
@@ -128,7 +213,7 @@ export function classifyRemote(job) {
     // list missed Toronto and Tokyo, a city list would miss the next thousand. A location field
     // exists to say where the job is — so if it says anything that is not a generic remote word, it
     // is naming somewhere, and somewhere is not everywhere.
-    const regions = [...new Set((loc.match(REGION_TOKENS) || []).map((r) => r.toUpperCase()))];
+    const regions = [...new Set((locText.match(REGION_TOKENS) || []).map((r) => r.toUpperCase()))];
     return {
       scope: 'country',
       label: regions.length ? 'location-field-restricted' : 'location-names-a-place',
