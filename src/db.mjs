@@ -146,6 +146,15 @@ CREATE INDEX IF NOT EXISTS idx_jobs_elig_company ON jobs(eligibility, company, i
 CREATE INDEX IF NOT EXISTS idx_jobs_track ON jobs(track, eligibility, score DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_tier ON jobs(tier, score DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_hidden ON jobs(hidden);
+-- The overview and the tier chips are the dashboard's front page, and both were grouping over the
+-- wide table: grouping by source had no index at all and scanned it whole, and grouping by tier
+-- with hidden = 0 found its rows through idx_jobs_hidden and then did a random lookup per row just
+-- to read tier. Measured on 5,285 rows: 1,249ms and 1,784ms warm, and the whole front page took 12.9
+-- seconds on a cold cache. Grouping needs the grouped column IN the index, not just the filter.
+CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
+CREATE INDEX IF NOT EXISTS idx_jobs_hidden_tier  ON jobs(hidden, tier);
+CREATE INDEX IF NOT EXISTS idx_jobs_hidden_track ON jobs(hidden, track);
+CREATE INDEX IF NOT EXISTS idx_jobs_elig_hidden_track ON jobs(eligibility, hidden, track);
 
 CREATE TABLE IF NOT EXISTS applications (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
