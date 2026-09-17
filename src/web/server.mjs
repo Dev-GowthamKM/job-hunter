@@ -600,7 +600,22 @@ const server = createServer(async (req, res) => {
       const rel = normalize(rest.join('/')).replace(/^(\.\.[/\\])+/, '');
       const dir = join(ROOT, 'data', 'applications', String(Number(id)));
       const file = join(dir, rel);
-      if (!file.startsWith(dir) || !existsSync(file) || !statSync(file).isFile()) return json(res, { error: 'not found' }, 404);
+      if (!file.startsWith(dir)) return json(res, { error: 'not found' }, 404);
+
+      // Render the PDF the first time somebody asks for it.
+      //
+      // Packets are built without one, because Chrome cold start is 10-270s on this machine and
+      // most packets are never opened. The HTML next to it is the artefact; this turns it into a
+      // PDF on demand and caches the result.
+      if (file.endsWith('.pdf')) {
+        const { pdfIsStale, renderOnePage } = await import('../jobs/render.mjs');
+        const resumeJson = join(dir, 'resume.json');
+        if (existsSync(resumeJson) && pdfIsStale(file)) {
+          try { renderOnePage(resumeJson, file); } catch (e) { return json(res, { error: `Could not render: ${e.message}` }, 500); }
+        }
+      }
+
+      if (!existsSync(file) || !statSync(file).isFile()) return json(res, { error: 'not found' }, 404);
       res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' });
       return res.end(readFileSync(file));
     }
@@ -740,6 +755,24 @@ const server = createServer(async (req, res) => {
   } catch (err) {
     json(res, { error: err.message }, 500);
   }
+});
+
+// "Already running" is the most likely reason this fails, and a Node stack trace is a frightening
+// way to be told something is fine. Say what happened and what to do about it.
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`\n  Job Hunter is already running.`);
+    console.log(`  Open http://127.0.0.1:${PORT}\n`);
+    console.log(`  To restart it instead:  pkill -f src/web/server.mjs && npm run web`);
+    console.log(`  To run a second copy:   PORT=4322 npm run web\n`);
+    process.exit(0);
+  }
+  if (err.code === 'EACCES') {
+    console.error(`\n  Port ${PORT} needs permission. Try a higher one: PORT=8080 npm run web\n`);
+    process.exit(1);
+  }
+  console.error(`\n  Could not start: ${err.message}\n`);
+  process.exit(1);
 });
 
 server.listen(PORT, HOST, () => {

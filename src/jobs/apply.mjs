@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, db, now, logEvent } from '../db.mjs';
-import { renderOnePage } from './render.mjs';
+import { renderOnePage, writeHtmlOnly } from './render.mjs';
 import { coverage, resumeText } from './ats.mjs';
 import { researchJob } from './research.mjs';
 import { loomJob } from './loom.mjs';
@@ -115,14 +115,27 @@ function init(id, { quiet = false } = {}) {
   console.log(`  loom/        script.md (${loom.words} words), slides.html (${loom.slides} slides), checklist.md`);
 }
 
-function render(id, { quiet = false } = {}) {
+/**
+ * Write the packet's resume and score it.
+ *
+ * The PDF is NOT rendered here by default, and that is the point. Chrome cold start on this machine
+ * measured between 10 and 270 seconds depending on what else it was doing, so rendering a PDF for
+ * all 57 packets cost hours and produced 57 files, most of which are never opened. The HTML is the
+ * artefact; the PDF is a rendering of it, made on demand when someone actually asks for it and
+ * cached from then on.
+ *
+ * Pass { pdf: true } (or --pdf) to force it, which is what a single-packet render does.
+ */
+function render(id, { quiet = false, pdf: wantPdf = flag('pdf') } = {}) {
   const job = getJob(id);
   const dir = packetDir(id);
   const resumeJson = join(dir, 'resume.json');
   if (!existsSync(resumeJson)) { console.error(`No resume.json yet. Run: node src/jobs/apply.mjs init --job=${id}`); process.exit(1); }
 
   const pdf = join(dir, `${(job.company || 'company').replace(/[^a-z0-9]+/gi, '_')}_Gowtham_K_M.pdf`);
-  const out = renderOnePage(resumeJson, pdf);
+  const out = wantPdf
+    ? renderOnePage(resumeJson, pdf)
+    : writeHtmlOnly(resumeJson, pdf);
 
   const resume = JSON.parse(readFileSync(resumeJson, 'utf8'));
   const cov = coverage(job.content || '', resumeText(resume));
@@ -135,7 +148,9 @@ function render(id, { quiet = false } = {}) {
   D.prepare("UPDATE jobs SET status='tailored', updated_at=? WHERE id=?").run(now(), job.id);
 
   if (quiet) return;
-  console.log(`PDF   ${out.pdf}  (${out.pages} page${out.pages === 1 ? '' : 's'})`);
+  console.log(out.pages
+    ? `PDF   ${out.pdf}  (${out.pages} page${out.pages === 1 ? '' : 's'})`
+    : `HTML  ${out.html}\n      PDF renders when you open it — add --pdf to force it now`);
   if (out.trims?.length) {
     console.log(`      trimmed to fit one page: ${out.trims.join('; ')}`);
   }
@@ -208,7 +223,7 @@ function applied(id) {
  *   node src/jobs/apply.mjs batch --tier=stretch
  *   node src/jobs/apply.mjs batch --limit=20
  */
-function batch() {
+async function batch() {
   const tier = arg('tier', 'match');
   const limit = Number(arg('limit')) || 50;
   const tiers = tier === 'all' ? ['match', 'stretch'] : tier.split(',');
@@ -221,6 +236,12 @@ function batch() {
   if (!jobs.length) { console.log(`No jobs at tier ${tiers.join('/')}.`); return; }
   console.log(`Building ${jobs.length} packet${jobs.length === 1 ? '' : 's'} (${tiers.join(', ')})\n`);
 
+  // Sequential, deliberately.
+  //
+  // An earlier version ran four "lanes" over this list. It did nothing: init and render are
+  // synchronous and execFileSync blocks the whole thread, so the lanes took turns anyway while
+  // making failures much harder to read. Chrome cold start is the real cost (~20s a packet on this
+  // machine) and the fix for that is rendering fewer times, not pretending to render concurrently.
   let built = 0, failed = 0;
   for (const j of jobs) {
     try {
@@ -244,7 +265,7 @@ function batch() {
 }
 
 const id = arg('job');
-if (cmd === 'batch') { batch(); }
+if (cmd === 'batch') { await batch(); }
 else if (!cmd || !id) {
   console.error('usage: node src/jobs/apply.mjs <init|render|review|approve|applied> --job=<id>');
   console.error('       node src/jobs/apply.mjs batch [--tier=match|stretch|all] [--limit=N]');

@@ -256,6 +256,12 @@ export function db() {
     mkdirSync(join(ROOT, 'data'), { recursive: true });
     _db = new DatabaseSync(DB_PATH);
     _db.exec('PRAGMA journal_mode = WAL;');
+    // Wait for a lock instead of failing on it.
+    //
+    // The dashboard server holds the same file, and with no busy timeout a batch write during a
+    // dashboard read fails instantly with "database is locked" - which killed a 57-packet rebuild
+    // on its second packet. Ten seconds is far longer than any statement here takes.
+    _db.exec('PRAGMA busy_timeout = 10000;');
     // On an existing database an index over a newly-added column fails before migrate() can add it,
     // and that takes the whole schema statement down with it. So: create what we can, migrate, then
     // run the schema again now that every column exists.

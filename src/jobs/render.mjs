@@ -3,7 +3,7 @@
 // machine. No puppeteer, no npm install, no headless browser download.
 //
 //   node src/jobs/render.mjs <resume.json> <out.pdf>
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { ROOT } from '../db.mjs';
@@ -100,13 +100,34 @@ export function renderPdf(resumeJsonPath, outPdf) {
   const htmlPath = outPdf.replace(/\.pdf$/, '.html');
   writeFileSync(htmlPath, html);
 
-  execFileSync(CHROME, [
+  // Chrome cold start is the entire cost of a render: measured between 10 and 270 seconds on the
+  // machine this was built on, depending on what else the browser was doing. It is the browser
+  // starting, not the page drawing.
+  //
+  // Two obvious fixes are not fixes, both measured rather than assumed:
+  //   - A scratch --user-data-dir. Headless Chrome hangs on its first-run flow with an empty
+  //     profile, even with a "First Run" sentinel: 210s, then a timeout.
+  //   - Rendering packets concurrently. execFileSync blocks the thread, so the "lanes" take turns.
+  //
+  // What actually works is rendering fewer times: the character-budget pre-trim below, and
+  // writeHtmlOnly() so a batch renders nothing at all until someone opens a packet.
+  //
+  // The retry is separate: a burst of launches makes macOS refuse the spawn outright, which killed
+  // a 57-packet rebuild on its second packet. One pause and another try clears it.
+  const launch = () => execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--no-sandbox',
     '--no-pdf-header-footer',
     '--print-to-pdf-no-header',
     `--print-to-pdf=${outPdf}`,
     `file://${htmlPath}`,
-  ], { stdio: 'ignore', timeout: 60000 });
+  ], { stdio: 'ignore', timeout: 90000 });
+
+  try {
+    launch();
+  } catch (first) {
+    execFileSync('/bin/sleep', ['2']);
+    try { launch(); } catch { throw new Error(`Chrome failed twice rendering ${outPdf}: ${first.message.slice(0, 80)}`); }
+  }
 
   if (!existsSync(outPdf)) throw new Error('Chrome produced no PDF.');
 
@@ -125,10 +146,63 @@ export function renderPdf(resumeJsonPath, outPdf) {
  * the loop stops the moment it fits. What survives is what mattered most, which is the same
  * decision a person makes with a one-page limit, just repeatable.
  */
+
+/**
+ * Drop the least important lines until the content plausibly fits one page.
+ *
+ * A character budget rather than a render, because rendering costs a browser launch. Measured
+ * against the two-column template: about 2400 characters of JSON is the limit. Anything still over
+ * after this is caught by the render loop, which is now rarely needed.
+ */
+function trimToBudget(r) {
+  const trims = [];
+  const budget = 2400;
+  const weight = (x) => JSON.stringify(x || '').length;
+  let over = weight(r.summary) + weight(r.skills)
+    + (r.experience || []).reduce((a, e) => a + weight(e), 0)
+    + (r.projects || []).reduce((a, p) => a + weight(p), 0) - budget;
+  while (over > 0) {
+    const lastProject = (r.projects || []).at(-1);
+    if (lastProject && (lastProject.bullets || []).length > 1) { over -= weight(lastProject.bullets.pop()); continue; }
+    if ((r.projects || []).length > 1) { over -= weight(r.projects.pop()); trims.push('dropped a trailing project'); continue; }
+    const longest = (r.experience || []).slice().sort((a, b) => (b.bullets?.length || 0) - (a.bullets?.length || 0))[0];
+    if (longest && (longest.bullets || []).length > 2) { over -= weight(longest.bullets.pop()); continue; }
+    break;
+  }
+  return trims;
+}
+
+/**
+ * Write the resume HTML and the trimmed resume.json, without launching a browser.
+ *
+ * Chrome is the entire cost of building a packet. Writing the page is instant, so a batch can build
+ * everything and leave the PDF for whoever actually opens one. The character-budget pre-trim below
+ * runs here too, so the HTML on disk is already the one-page version rather than something that
+ * would need re-trimming at render time.
+ */
+export function writeHtmlOnly(resumeJsonPath, outPdf) {
+  const r = JSON.parse(readFileSync(resumeJsonPath, 'utf8'));
+  const trims = trimToBudget(r);
+  writeFileSync(resumeJsonPath, JSON.stringify(r, null, 2) + '\n');
+  const htmlPath = outPdf.replace(/\.pdf$/, '.html');
+  writeFileSync(htmlPath, toHtml(r));
+  return { html: htmlPath, pdf: outPdf, pages: 0, trims, deferred: true };
+}
+
+/** Is there a PDF next to this HTML, and is it current? */
+export function pdfIsStale(pdfPath) {
+  const htmlPath = pdfPath.replace(/\.pdf$/, '.html');
+  if (!existsSync(pdfPath)) return true;
+  if (!existsSync(htmlPath)) return false;
+  return statSync(htmlPath).mtimeMs > statSync(pdfPath).mtimeMs;
+}
+
 export function renderOnePage(resumeJsonPath, outPdf, { maxPasses = 14 } = {}) {
   const original = JSON.parse(readFileSync(resumeJsonPath, 'utf8'));
   let r = JSON.parse(JSON.stringify(original));
   const trims = [];
+
+  trims.push(...trimToBudget(r));
 
   for (let pass = 0; pass <= maxPasses; pass++) {
     writeFileSync(resumeJsonPath, JSON.stringify(r, null, 2) + '\n');
