@@ -269,12 +269,61 @@ async function batch() {
   console.log(`\nNothing has been submitted. Approve individually when you have read one.`);
 }
 
+/**
+ * Everything, in one go, with the PDFs.
+ *
+ * `init` then `render` leaves the resume as HTML and defers the PDF until someone opens it, which
+ * is the right default for building 60 packets at once - Chrome takes over a minute each. It is the
+ * wrong default for one job the owner has just decided they care about: they press a button and
+ * want the finished thing, not a promise of one.
+ *
+ * Runs as a single process so the dashboard can stream it, and prints each step as it starts so a
+ * two-minute wait looks like progress rather than a hang.
+ */
+async function full(jobId) {
+  const job = getJob(jobId);
+  const started = Date.now();
+  console.log(`Building the full packet for ${job.company || '?'} — ${job.title}`);
+  console.log(`Chrome renders the PDFs, which is the slow part. Expect a couple of minutes.\n`);
+
+  console.log('[1/4] posting, research dossier, tailored resume, Loom script and deck');
+  init(jobId, { quiet: true });
+
+  console.log('[2/4] resume to PDF, and the one-page check');
+  render(jobId, { quiet: false, pdf: true });
+
+  console.log('\n[3/4] deck to PDF');
+  const { toPdf, toPptx } = await import('./slides-export.mjs');
+  try { toPdf(Number(jobId)); console.log('      loom/slides.pdf'); }
+  catch (e) { console.log(`      skipped: ${e.message}`); }
+
+  console.log('[4/4] deck to PowerPoint');
+  try { toPptx(Number(jobId)); console.log('      loom/slides.pptx'); }
+  catch (e) { console.log(`      skipped: ${e.message}`); }
+
+  console.log(`\nDone in ${Math.round((Date.now() - started) / 1000)}s. Nothing has been submitted.`);
+  console.log('Read it, then approve it yourself if you want to apply.');
+}
+
 const id = arg('job');
 if (cmd === 'batch') { await batch(); }
 else if (!cmd || !id) {
-  console.error('usage: node src/jobs/apply.mjs <init|render|review|approve|applied> --job=<id>');
+  console.error('usage: node src/jobs/apply.mjs <init|render|full|review|approve|applied> --job=<id>');
+  console.error('       node src/jobs/apply.mjs outcome --job=<id> --result=rejected|interview|offer|ghosted|clear [--note="..."]');
   console.error('       node src/jobs/apply.mjs batch [--tier=match|stretch|all] [--limit=N]');
   process.exit(1);
+} else if (cmd === 'full') {
+  await full(id);
+} else if (cmd === 'outcome') {
+  const result = arg('result');
+  const note = arg('note', null);
+  const { setOutcome } = await import('../db.mjs');
+  try {
+    const appId = setOutcome(id, { outcome: result === 'clear' ? null : result, note });
+    if (!appId) { console.error(`No application for job ${id}. Build a packet first.`); process.exit(1); }
+    console.log(result === 'clear' ? `Cleared the outcome on job ${id}.` : `Job ${id}: ${result}${note ? ` — ${note}` : ''}`);
+    logEvent('outcome', { job: Number(id), result, note });
+  } catch (e) { console.error(e.message); process.exit(1); }
 } else {
   ({ init, render, review, approve, applied }[cmd] || (() => { console.error(`Unknown command "${cmd}".`); process.exit(1); }))(id);
 }

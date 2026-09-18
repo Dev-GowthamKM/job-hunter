@@ -215,6 +215,36 @@ Three things about it that are deliberate:
   descriptions overnight is useful; a model deciding to submit an application is the failure this
   system exists to prevent, and a scheduled task is the worst possible place to allow it.
 
+# One click builds the whole packet
+
+`apply.mjs full --job=N` runs init, render with the PDF, and both deck exports as ONE process, so
+the dashboard can stream it. Measured at about 125 seconds, nearly all of it Chrome.
+
+`init` then `render` without `--pdf` stays the right default for `batch`, where Chrome would cost an
+hour over sixty packets. It is the wrong default for one job the owner has just decided they care
+about, and the Build packet button now uses `full`.
+
+# Applying is the middle of the story
+
+`applications` carries `outcome` (rejected | interview | offer | ghosted), `outcome_at` and
+`outcome_note`. The note is where the verdict came from, because in three months a bare "rejected"
+is indistinguishable from a mis-click - an email subject line is ideal.
+
+The overview prints "40 applied — 2 interviews · 31 rejected · 7 still silent". That ratio is the
+only measure of whether the packets work, and the database used to stop at `applied_at`.
+
+**`setOutcome` is owner-only, like every other write in this system.** Nothing inbound can reach it.
+
+# Freshness is a view, not a collection filter
+
+The owner asked for the hunt to collect only the last 24 hours. It does not, on purpose: that would
+discard every older posting on every run, and a role posted last week that he has not seen is still
+a role he has not seen. The collection keeps everything; `?within=<hours>` filters it, the job cards
+show an age, and the post-run summary opens straight onto the last 24 hours.
+
+Filtering happens in SQL rather than the browser so it survives paging, and it coalesces to
+`discovered_at` - a posting with no date from the board is not evidence of age.
+
 # An empty panel is a lie
 
 `show()` called each tab's async loader without awaiting it and without a `.catch`, so any throw

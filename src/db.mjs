@@ -180,6 +180,9 @@ CREATE TABLE IF NOT EXISTS applications (
   created_at        TEXT NOT NULL,
   approved_at       TEXT,                    -- set ONLY by the owner approving. Never by an agent.
   applied_at        TEXT,
+  outcome           TEXT,                    -- rejected | interview | offer | ghosted
+  outcome_at        TEXT,
+  outcome_note      TEXT,                    -- where it came from: an email subject, a portal, you
   notes             TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
@@ -330,6 +333,14 @@ function migrate(d) {
   ];
   for (const [name, ddl] of added) {
     if (!cols.includes(name)) d.exec(`ALTER TABLE jobs ADD COLUMN ${name} ${ddl}`);
+  }
+
+  // What happened after you applied. Applying is the middle of the story, not the end, and until
+  // now the database stopped at applied_at - so "I applied to 40 things" could not be turned into
+  // "and 31 said no", which is the number that tells you whether the packets are working.
+  const appCols = d.prepare('PRAGMA table_info(applications)').all().map((c) => c.name);
+  for (const [name, ddl] of [['outcome', 'TEXT'], ['outcome_at', 'TEXT'], ['outcome_note', 'TEXT']]) {
+    if (!appCols.includes(name)) d.exec(`ALTER TABLE applications ADD COLUMN ${name} ${ddl}`);
   }
 
   // Everything that belongs to a person rather than to the world needs an owner.
@@ -523,6 +534,25 @@ export function retireMissing(source, seenSourceIds) {
     if (r.missing_runs >= 1) { shut.run(t, r.id); closed++; } else { miss.run(t, r.id); missing++; }
   }
   return { seen, missing, closed };
+}
+
+/**
+ * Record what came back. Only the owner ever calls this - there is no inbound path that can.
+ *
+ * `note` is where the verdict came from, because in three months "rejected" with no provenance is
+ * indistinguishable from a mis-click. An email subject line is ideal.
+ */
+export function setOutcome(jobId, { outcome, note = null }) {
+  const ok = ['rejected', 'interview', 'offer', 'ghosted', null];
+  if (!ok.includes(outcome)) throw new Error(`outcome must be one of ${ok.filter(Boolean).join(', ')}`);
+  const d = db();
+  const app = d.prepare('SELECT id FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(Number(jobId));
+  if (!app) return null;
+  d.prepare('UPDATE applications SET outcome = ?, outcome_at = ?, outcome_note = ? WHERE id = ?')
+    .run(outcome, outcome ? now() : null, note, app.id);
+  if (outcome) d.prepare("UPDATE jobs SET status = 'closed', updated_at = ? WHERE id = ? AND status = 'applied'")
+    .run(now(), Number(jobId));
+  return app.id;
 }
 
 export function setJobHidden(id, hidden = true) {

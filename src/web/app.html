@@ -198,12 +198,22 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 .kind { font-size:10px; text-transform:uppercase; letter-spacing:.11em; color:var(--dim); font-weight:600; }
 
 /* ── console ─────────────────────────────────────────── */
+/* The live output reads as a terminal, because that is what it is: a process running against
+   eighty-odd job boards, printing as it goes. Phosphor green on near-black, with the counts and
+   verdicts picked out so a two-minute run is scannable rather than a wall of text. */
 .console {
-  background:#05090d; border:1px solid var(--line); border-radius:var(--r);
+  background:#03070a; border:1px solid #14301f; border-radius:var(--r);
   padding:16px 18px; font-family:"JetBrains Mono",ui-monospace,monospace;
-  font-size:12.5px; line-height:1.7; color:#bccbd9;
+  font-size:12.5px; line-height:1.7; color:#5ef08a;
+  text-shadow:0 0 9px rgba(94,240,138,.22);
   height:420px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
 }
+.console b     { color:#b8ffcf; font-weight:600; }   /* source names and headings */
+.console .n    { color:#eaff9b; }                    /* counts */
+.console .good { color:#7dffa8; }                    /* eligible, stored, ok */
+.console .bad  { color:#ff9d8a; }                    /* errors, nothing returned */
+.console .dim  { color:#2f7a4d; }                    /* rules and separators */
+.console::selection, .console ::selection { background:#1d6b3c; color:#eafff1; }
 .console .hl { color:var(--accent); } .console .g { color:var(--ok); }
 
 .note { color:var(--muted); font-size:12.5px; line-height:1.6; }
@@ -372,6 +382,12 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
           <option value="pay">Highest pay first</option>
           <option value="new">Newest first</option>
         </select>
+        <select id="f-within" title="How recently the job was posted">
+          <option value="">Any age</option>
+          <option value="24">Posted in 24 hours</option>
+          <option value="72">Posted in 3 days</option>
+          <option value="168">Posted this week</option>
+        </select>
         <input id="f-company" placeholder="Company" style="width:140px">
       </div>
     </header>
@@ -500,6 +516,26 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // Rupees group as 1,50,000 and dollars as 150,000. Using one locale for both printed the salary
 // band as "$1,50,000", which reads as a typo.
 const nfmt = (n) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+/**
+ * How old a posting is, in the roughest useful unit.
+ *
+ * Freshness decides whether applying is worth the hour it takes: a role posted this morning has a
+ * handful of applicants, the same role three weeks old has several hundred and probably a shortlist
+ * already. The date was in the data all along and the card never showed it.
+ */
+const ago = (iso) => {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const mins = Math.max(0, Math.round((Date.now() - then.getTime()) / 60000));
+  if (mins < 60) return { text: `${mins || 1}m ago`, fresh: true };
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return { text: `${hrs}h ago`, fresh: true };
+  const days = Math.round(hrs / 24);
+  if (days < 7) return { text: `${days}d ago`, fresh: days <= 1 };
+  if (days < 31) return { text: `${Math.round(days / 7)}w ago`, fresh: false };
+  return { text: `${Math.round(days / 30)}mo ago`, fresh: false, stale: true };
+};
 const usd = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 let SYM = '₹';
 // The money tab sets SYM from config, but Overview prints a balance too and it renders first - so
@@ -666,7 +702,20 @@ LOAD.overview = async () => {
     stat(nfmt(o.jobs.total), 'role-relevant postings tracked') +
     stat(e.yes ?? 0, 'eligible right now', 'good') +
     stat(e.unclear ?? 0, 'need a human read', 'warn') +
-    stat(o.pendingApproval, 'packets awaiting your approval', o.pendingApproval ? 'hot' : '');
+    stat(o.pendingApproval, 'packets awaiting your approval', o.pendingApproval ? 'hot' : '') +
+    (() => {
+      const a = o.applications || { applied: 0, byOutcome: [] };
+      const by = Object.fromEntries((a.byOutcome || []).map((r) => [r.outcome, r.n]));
+      const heard = (by.rejected || 0) + (by.interview || 0) + (by.offer || 0);
+      if (!a.applied) return '';
+      const parts = [
+        by.interview ? `${by.interview} interview${by.interview === 1 ? '' : 's'}` : null,
+        by.offer ? `${by.offer} offer${by.offer === 1 ? '' : 's'}` : null,
+        by.rejected ? `${by.rejected} rejected` : null,
+        a.applied - heard > 0 ? `${a.applied - heard} still silent` : null,
+      ].filter(Boolean).join(' · ');
+      return stat(a.applied, `applied — ${parts || 'nothing back yet'}`, by.offer ? 'good' : '');
+    })();
 
   if (o.money?.currency) SYM = SYMBOLS[o.money.currency] || o.money.currency + ' ';
   $('#ov-money').innerHTML = o.money.allocated
@@ -717,6 +766,7 @@ function filters() {
   if (hi) p.set('salaryMax', hi);
   if (!$('#f-unknown').checked) p.set('unknownSalary', '0');
   if ($('#f-hidden').checked) p.set('hidden', '1');
+  const within = $('#f-within')?.value; if (within) p.set('within', within);
   p.set('sort', $('#f-sort').value);
   return p;
 }
@@ -797,6 +847,9 @@ async function loadJobs(append = false) {
           ${j.payLabel ? `<span class="tag pay">${esc(j.payLabel)}</span>` : '<span class="tag">pay not published</span>'}
           <span class="tag">${esc((j.location_raw || 'location not stated').slice(0, 36))}</span>
           <span class="tag">${esc(j.source)}</span>
+          ${(() => { const a = ago(j.posted_at); return a
+            ? `<span class="tag ${a.fresh ? 'ok' : a.stale ? 'warn' : ''}" title="Posted ${esc(new Date(j.posted_at).toLocaleString())}">${a.text}</span>`
+            : ''; })()}
           ${j.content_len != null && j.content_len < 1200
             ? '<span class="tag warn" title="The board published a summary, not the full posting. Open the original before writing anything for it.">summary only</span>' : ''}
           ${j.app_id ? `<span class="tag ok">packet ready${j.ats != null ? ` · ATS ${j.ats}%` : ''}</span>` : ''}
@@ -832,13 +885,14 @@ $('#track-chips').onclick = (e) => {
   renderChips().then(() => loadJobs());
 };
 
-['#f-sort', '#f-unknown', '#f-hidden'].forEach((sel) => { $(sel).onchange = () => loadJobs(); });
+['#f-sort', '#f-within', '#f-unknown', '#f-hidden'].forEach((sel) => { const el = $(sel); if (el) el.onchange = () => loadJobs(); });
 ['#f-company', '#f-smin', '#f-smax'].forEach((sel) => {
   $(sel).oninput = () => { clearTimeout(window._t); window._t = setTimeout(() => loadJobs(), 320); };
 });
 $('#f-clear').onclick = () => {
   $('#f-company').value = ''; $('#f-smin').value = ''; $('#f-smax').value = '';
   $('#f-unknown').checked = true; $('#f-hidden').checked = false; $('#f-sort').value = 'score';
+  if ($('#f-within')) $('#f-within').value = '';
   activeTier = 'match'; renderTiers();
   TRACKS.forEach((t) => activeTracks.add(t.key));
   renderChips().then(() => loadJobs());
@@ -853,9 +907,9 @@ $('#jobs-list').onclick = async (e) => {
   if (bd) {
     e.stopPropagation();
     bd.disabled = true; bd.textContent = 'Building…';
-    await api(`/api/apply/${bd.dataset.build}/init`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    await api(`/api/apply/${bd.dataset.build}/render`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    toast('Packet built'); loadJobs();
+    // One click, the whole packet, including both PDFs. It takes a couple of minutes, so it streams
+    // into the Search view's console instead of leaving a dead button and a spinner.
+    buildPacket(bd.dataset.build);
     return;
   }
 
@@ -875,6 +929,22 @@ $('#jobs-list').onclick = async (e) => {
   }
   const j = e.target.closest('.job'); if (j) openJob(j.dataset.id);
 };
+
+// Recording what came back. The owner reporting a fact - there is no path by which anything else
+// can set this.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('.outcome-btn');
+  if (!b) return;
+  e.stopPropagation();
+  const note = prompt(`Where did "${b.dataset.outcome}" come from?\n\nAn email subject line is ideal — in three months this is the only thing that tells you the difference between a real verdict and a mis-click.`, '');
+  if (note === null) return;
+  const r = await api(`/api/apply/${b.dataset.job}/outcome`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ outcome: b.dataset.outcome, note }),
+  });
+  toast(r.ok ? `Recorded: ${b.dataset.outcome}` : (r.error || 'Failed'));
+  if (r.ok) { document.querySelector('.drawer')?.remove(); document.querySelector('.scrim')?.remove(); LOAD.overview(); loadJobs(); }
+});
 
 /* ── job drawer ─────────────────────────────────────────── */
 async function openJob(id, { apply = false } = {}) {
@@ -920,6 +990,13 @@ async function openJob(id, { apply = false } = {}) {
         </span></div>` : ''}
       ${f('Recording checklist', 'loom/checklist.md', pk?.loomChecklist)}
       ${f('Job description', 'job.txt', pk?.jobText)}
+      ${a?.applied_at ? `<div class="file" style="gap:8px;flex-wrap:wrap">
+        <span>What came back${a.outcome ? `: <b>${esc(a.outcome)}</b>` : ''}</span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+          ${['rejected', 'interview', 'offer', 'ghosted'].map((o) => `
+            <button class="act ghost outcome-btn" data-outcome="${o}" data-job="${id}"
+                    style="padding:5px 9px;font-size:11px${a.outcome === o ? ';border-color:var(--accent)' : ''}">${o}</button>`).join('')}
+        </span></div>` : ''}
     </div>
 
     ${a ? `<dl class="kv"><dt>ATS coverage</dt><dd>${a.ats_coverage ?? '–'}%</dd></dl>` : ''}
@@ -1256,6 +1333,11 @@ function runTask(what) {
   const card = $('#progress-card');
   const lines = $('#progress-lines');
   box.textContent = ''; lines.innerHTML = '';
+  // Show the output while it runs. It was hidden behind a "Show raw output" toggle, which is a
+  // reasonable default for a finished run and the wrong one for a live one: the whole point of a
+  // two-minute job is watching it move.
+  box.hidden = false;
+  const tog = $('#toggle-log'); if (tog) tog.textContent = 'Hide raw output';
   card.hidden = false;
   $('#progress-title').textContent = what === 'hunt' ? 'Searching for jobs…'
     : what === 'rescreen' ? 'Re-applying your filters…'
@@ -1266,8 +1348,18 @@ function runTask(what) {
   let done = 0;
   const summary = [];
 
+  // Pick out the parts worth seeing at a glance. Everything is escaped first, so a job title
+  // containing a bracket cannot inject markup into the console.
+  const paint = (line) => esc(line)
+    .replace(/^(\s*)([a-z][\w.+-]*)(\s{2,})(\d[\d,]*)( returned)/i,
+             (m, a, src, gap, n, tail) => `${a}<b>${src}</b>${gap}<span class="n">${n}</span>${tail}`)
+    .replace(/(&lt;-- NOTHING[^\n]*)/g, '<span class="bad">$1</span>')
+    .replace(/\b(ERROR|FAILED|rate.limited)\b/gi, '<span class="bad">$&</span>')
+    .replace(/\b(eligible|stored|ok|Done|complete|ready)\b/g, '<span class="good">$&</span>')
+    .replace(/^(\s*[-=─]{3,}.*)$/gm, '<span class="dim">$1</span>');
+
   const onLine = (line) => {
-    box.insertAdjacentHTML('beforeend', esc(line) + '\n');
+    box.insertAdjacentHTML('beforeend', paint(line) + '\n');
     box.scrollTop = box.scrollHeight;
 
     const src = /^\s{2}(\S[\S ]*?)\s{2,}(\d+) returned/.exec(line);
@@ -1299,9 +1391,17 @@ function runTask(what) {
              <span>${esc(k.startsWith('track:') ? k.slice(6) : k)}</span>
              <span class="amt"><b>${esc(v)}</b></span></div>`).join('') + `</div>`);
     }
+    // Straight to what is new.
+    //
+    // Collecting only the last 24 hours would mean throwing away every older posting on every run,
+    // and a role posted last week that you have not seen is still a role you have not seen. The
+    // collection keeps everything; this puts the fresh ones in front of you, which is the part that
+    // actually matters after a run.
     lines.insertAdjacentHTML('beforeend',
-      `<div class="row" style="margin-top:14px"><button class="act" onclick="show('jobs')">See the jobs</button>
-       <button class="act ghost" onclick="show('near')">See what was rejected</button></div>`);
+      `<div class="row" style="margin-top:14px">
+         <button class="act" onclick="show('jobs');$('#f-within').value='24';$('#f-sort').value='new';loadJobs()">Posted in the last 24 hours</button>
+         <button class="act ghost" onclick="show('jobs')">All the jobs</button>
+         <button class="act ghost" onclick="show('near')">What was rejected</button></div>`);
     refreshCounts(); renderChips();
   };
 
@@ -1334,6 +1434,58 @@ $('#toggle-log').onclick = () => {
   c.hidden = !c.hidden;
   $('#toggle-log').textContent = c.hidden ? 'Show raw output' : 'Hide raw output';
 };
+
+/**
+ * Build one packet, end to end, with the output on screen.
+ *
+ * Reuses the Search view's console because a full build is a two-minute job that spawns Chrome
+ * twice, and a button that says "Building…" for two minutes with nothing else moving is
+ * indistinguishable from one that has hung.
+ */
+function buildPacket(id) {
+  if (running) { toast('Something is already running.'); return; }
+  running = true;
+  show('search');
+  const box = $('#console'), card = $('#progress-card'), lines = $('#progress-lines');
+  box.hidden = false; box.textContent = ''; lines.innerHTML = '';
+  card.hidden = false;
+  $('#progress-title').textContent = 'Building the packet…';
+  $('#progress-bar').style.width = '6%';
+
+  fetch(`/api/apply/${id}/build`, { method: 'POST' }).then((resp) => {
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    const pump = () => reader.read().then(({ done, value }) => {
+      if (done) { running = false; return; }
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const part of parts) {
+        const ev = /^event: (\w+)/m.exec(part)?.[1];
+        const dm = /^data: (.*)$/m.exec(part)?.[1];
+        if (!dm) continue;
+        const data = JSON.parse(dm);
+        if (ev === 'line') {
+          box.insertAdjacentHTML('beforeend', esc(String(data)) + '\n');
+          box.scrollTop = box.scrollHeight;
+          const step = /^\[(\d)\/4\]/.exec(String(data));
+          if (step) $('#progress-bar').style.width = (6 + Number(step[1]) / 4 * 88) + '%';
+        }
+        if (ev === 'done') {
+          running = false;
+          $('#progress-bar').style.width = '100%';
+          $('#progress-title').textContent = data.code === 0 ? 'Packet ready' : 'Build failed';
+          lines.innerHTML = data.code === 0
+            ? `<div class="row" style="margin-top:12px"><button class="act" onclick="show('jobs');openJob(${Number(id)})">Open the packet</button></div>`
+            : '<div class="note">Check the output above.</div>';
+          loadJobs();
+        }
+      }
+      return pump();
+    });
+    return pump();
+  }).catch((e) => { running = false; box.textContent += `\nERROR ${e.message}`; });
+}
 
 $$('[data-run]').forEach((b) => b.onclick = () => { show('search'); runTask(b.dataset.run); });
 $('#btn-hunt').onclick = () => { show('search'); runTask('hunt'); };

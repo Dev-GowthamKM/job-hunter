@@ -136,6 +136,13 @@ function overview(userId = 0) {
     band: { min: cand.compensation.min, max: cand.compensation.max },
     money: b ? { month, allocated: b.allocated, spent, left: b.allocated - spent, currency: b.currency } : { month, allocated: null },
     pendingApproval: D.prepare("SELECT COUNT(*) n FROM applications WHERE status='awaiting_approval' AND user_id = ?").get(userId).n,
+    // What happened after you applied. Applying is the middle of the story: 40 sent and 31 refused
+    // is the number that says whether the packets are working, and it was nowhere on the page.
+    applications: {
+      applied: D.prepare('SELECT COUNT(*) n FROM applications WHERE applied_at IS NOT NULL AND user_id = ?').get(userId).n,
+      byOutcome: D.prepare(`SELECT outcome, COUNT(*) n FROM applications
+        WHERE outcome IS NOT NULL AND user_id = ? GROUP BY outcome`).all(userId),
+    },
   };
 }
 
@@ -148,6 +155,17 @@ function jobList(q) {
   if (q.status) { where.push('status = ?'); args.push(q.status); }
   if (q.company) { where.push('company LIKE ?'); args.push(`%${q.company}%`); }
   if (q.track) { where.push(`track IN (${q.track.split(',').map(() => '?').join(',')})`); args.push(...q.track.split(',')); }
+
+  // Freshness, in hours. A role posted this morning has a handful of applicants; the same role
+  // three weeks old has several hundred and probably a shortlist. Filtering here rather than in the
+  // browser so it survives paging - filtering after LIMIT would silently drop rows.
+  //
+  // COALESCE to discovered_at: a posting with no date from the board is not evidence of age, and
+  // dropping it would hide jobs for a reason that has nothing to do with them.
+  if (q.within && Number(q.within) > 0) {
+    where.push(`COALESCE(posted_at, discovered_at) >= ?`);
+    args.push(new Date(Date.now() - Number(q.within) * 3600000).toISOString());
+  }
   where.push(q.hidden === '1' ? 'hidden = 1' : 'hidden = 0');
 
   // Salary is compared in USD, so a non-USD posting has to be converted with the same rates the
@@ -704,6 +722,21 @@ const server = createServer(async (req, res) => {
 
       if (p.startsWith('/api/apply/')) {
         const [, , , id, action] = p.split('/');
+
+        // Building everything takes a couple of minutes because Chrome renders two PDFs, so it is
+        // streamed rather than awaited. There is still no submit here: `full` runs init, render and
+        // the deck exports, and apply.mjs has no send path to reach.
+        if (action === 'build') return stream(res, ['src/jobs/apply.mjs', 'full', `--job=${Number(id)}`]);
+
+        // Recording what came back is the owner reporting a fact, not the system deciding one.
+        if (action === 'outcome') {
+          const { setOutcome } = await import('../db.mjs');
+          try {
+            const appId = setOutcome(Number(id), { outcome: b.outcome || null, note: b.note || null });
+            return json(res, appId ? { ok: true } : { error: 'no application for that job' }, appId ? 200 : 404);
+          } catch (e) { return json(res, { error: e.message }, 400); }
+        }
+
         if (!['init', 'render', 'approve', 'applied'].includes(action)) return json(res, { error: 'unknown action' }, 400);
 
         // The gate. A click here is the owner deciding, exactly as typing the command is - which is
