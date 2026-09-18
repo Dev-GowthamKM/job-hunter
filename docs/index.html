@@ -198,12 +198,22 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 .kind { font-size:10px; text-transform:uppercase; letter-spacing:.11em; color:var(--dim); font-weight:600; }
 
 /* ── console ─────────────────────────────────────────── */
+/* The live output reads as a terminal, because that is what it is: a process running against
+   eighty-odd job boards, printing as it goes. Phosphor green on near-black, with the counts and
+   verdicts picked out so a two-minute run is scannable rather than a wall of text. */
 .console {
-  background:#05090d; border:1px solid var(--line); border-radius:var(--r);
+  background:#03070a; border:1px solid #14301f; border-radius:var(--r);
   padding:16px 18px; font-family:"JetBrains Mono",ui-monospace,monospace;
-  font-size:12.5px; line-height:1.7; color:#bccbd9;
+  font-size:12.5px; line-height:1.7; color:#5ef08a;
+  text-shadow:0 0 9px rgba(94,240,138,.22);
   height:420px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
 }
+.console b     { color:#b8ffcf; font-weight:600; }   /* source names and headings */
+.console .n    { color:#eaff9b; }                    /* counts */
+.console .good { color:#7dffa8; }                    /* eligible, stored, ok */
+.console .bad  { color:#ff9d8a; }                    /* errors, nothing returned */
+.console .dim  { color:#2f7a4d; }                    /* rules and separators */
+.console::selection, .console ::selection { background:#1d6b3c; color:#eafff1; }
 .console .hl { color:var(--accent); } .console .g { color:var(--ok); }
 
 .note { color:var(--muted); font-size:12.5px; line-height:1.6; }
@@ -248,7 +258,15 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
   nav button { white-space:nowrap; }
   nav button.on::before { display:none; }
   h1 { font-size:24px; }
-  .env { grid-template-columns:86px 1fr; } .env .amt { grid-column:1/-1; text-align:left; }
+  /* Two different rows share .env and they need different things on a phone.
+     A money envelope's amount is "Rs1,100 / Rs1,100" plus a sub-line, so it genuinely needs its own
+     row - that is what .wide marks. The source chart's amount is a bare number like 3,078, and
+     wrapping that pushed every count onto a line of its own and squeezed the label into 86px,
+     where "workingnomads" ran straight through its bar. */
+  .env { grid-template-columns:minmax(0,88px) 1fr auto; gap:10px; }
+  .env > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .env.wide { grid-template-columns:86px 1fr; }
+  .env.wide .amt { grid-column:1/-1; text-align:left; }
   .kv { grid-template-columns:1fr; gap:2px 0; } .kv dt { margin-top:8px; }
 }
 
@@ -323,7 +341,7 @@ const DEMO = {
    },
    "companies": 77,
    "lastRun": {
-    "at": "2026-09-17T18:08:14.273Z",
+    "at": "2026-09-18T07:49:35.459Z",
     "detail": {
      "found": 14,
      "sources": 1,
@@ -342,7 +360,11 @@ const DEMO = {
     "left": 1567,
     "currency": "EUR"
    },
-   "pendingApproval": 3
+   "pendingApproval": 3,
+   "applications": {
+    "applied": 0,
+    "byOutcome": []
+   }
   },
   "/api/tiers": [
    {
@@ -1266,10 +1288,10 @@ const DEMO = {
    "spent": 1433,
    "left": 1567,
    "closed": false,
-   "daysLeft": 13,
+   "daysLeft": 12,
    "daysInMonth": 30,
-   "perDay": 120.53846153846153,
-   "projected": 2528.823529411765,
+   "perDay": 130.58333333333334,
+   "projected": 2388.3333333333335,
    "envelopes": [
     {
      "name": "invest",
@@ -1312,35 +1334,35 @@ const DEMO = {
    "recent": [
     {
      "id": 5,
-     "at": "2026-09-17T18:08:14.244Z",
+     "at": "2026-09-18T07:49:35.375Z",
      "envelope": "transport",
      "amount": 61,
      "note": "metro pass"
     },
     {
      "id": 4,
-     "at": "2026-09-17T18:08:14.244Z",
+     "at": "2026-09-18T07:49:35.375Z",
      "envelope": "tools",
      "amount": 20,
      "note": "domain renewal"
     },
     {
      "id": 3,
-     "at": "2026-09-17T18:08:14.244Z",
+     "at": "2026-09-18T07:49:35.375Z",
      "envelope": "food",
      "amount": 38,
      "note": "coffee, week 2"
     },
     {
      "id": 2,
-     "at": "2026-09-17T18:08:14.244Z",
+     "at": "2026-09-18T07:49:35.375Z",
      "envelope": "food",
      "amount": 214,
      "note": "groceries"
     },
     {
      "id": 1,
-     "at": "2026-09-17T18:08:14.244Z",
+     "at": "2026-09-18T07:49:35.375Z",
      "envelope": "rent",
      "amount": 1100,
      "note": "September rent"
@@ -1368,11 +1390,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-16T18:08:14.246Z",
+    "posted_at": "2026-09-17T07:49:35.380Z",
     "content": "We are a fully distributed team of 40 building developer tooling.\n\nWe hire anywhere in the world and have no headquarters. Contract of Employment is issued through our\nemployer of record in your country.\n\nWhat you will do\n- Own features end to end in TypeScript, React and Node.js\n- Design PostgreSQL schemas and the APIs on top of them\n- Share the on-call rotation with six other engineers\n\nRequirements\n- 2+ years shipping production web applications\n- Strong JavaScript and TypeScript\n- Comfortable with SQL and query performance\n- Docker, and enough CI to keep a pipeline green\n\nNice to have\n- Experience with retrieval-augmented generation\n- Open source contributions\n\nCompensation: $85,000 - $115,000 depending on location and experience.\nNew hire equity: $10,000 - $20,000 vesting over four years.",
     "raw_json": null,
-    "discovered_at": "2026-09-17T18:08:14.244Z",
-    "updated_at": "2026-09-17T18:08:44.624Z",
+    "discovered_at": "2026-09-18T07:49:35.375Z",
+    "updated_at": "2026-09-18T07:54:09.984Z",
     "status": "tailored",
     "score": 91,
     "eligibility": "yes",
@@ -1382,8 +1404,10 @@ const DEMO = {
     "track": "dev",
     "tier": "match",
     "hidden": 0,
+    "missing_runs": 0,
     "notes": null,
-    "payLabel": "$85k–$115k/yr"
+    "payLabel": "$85k–$115k/yr",
+    "content_len": 804
    },
    "application": {
     "id": 1,
@@ -1396,9 +1420,12 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/loom/slides.html",
     "ats_coverage": 47,
     "status": "awaiting_approval",
-    "created_at": "2026-09-17T18:08:14.503Z",
+    "created_at": "2026-09-18T07:49:36.043Z",
     "approved_at": null,
     "applied_at": null,
+    "outcome": null,
+    "outcome_at": null,
+    "outcome_note": null,
     "notes": null,
     "user_id": 0
    },
@@ -1431,11 +1458,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-15T18:08:14.251Z",
+    "posted_at": "2026-09-16T07:49:35.383Z",
     "content": "Tessellate builds retrieval infrastructure for regulated industries.\n\nThis role is open to candidates anywhere in the world. We have teammates in 14 countries.\n\nYou will\n- Build and evaluate RAG pipelines against real customer corpora\n- Own prompt design and the evaluation harness that keeps it honest\n- Work directly with the two founders on what ships next\n\nWe are looking for\n- 2+ years of software engineering, any stack\n- Hands-on work with an LLM API in production, not just a demo\n- Python or TypeScript\n- Vector search: pgvector, Qdrant, or similar\n\nBase salary $95,000 - $130,000. Wellness stipend $1,200 per year.",
     "raw_json": null,
-    "discovered_at": "2026-09-17T18:08:14.244Z",
-    "updated_at": "2026-09-17T18:09:24.209Z",
+    "discovered_at": "2026-09-18T07:49:35.375Z",
+    "updated_at": "2026-09-18T07:57:28.782Z",
     "status": "tailored",
     "score": 88,
     "eligibility": "yes",
@@ -1445,8 +1472,10 @@ const DEMO = {
     "track": "ai",
     "tier": "match",
     "hidden": 0,
+    "missing_runs": 0,
     "notes": null,
-    "payLabel": "$95k–$130k/yr"
+    "payLabel": "$95k–$130k/yr",
+    "content_len": 624
    },
    "application": {
     "id": 2,
@@ -1459,9 +1488,12 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/loom/slides.html",
     "ats_coverage": 13,
     "status": "awaiting_approval",
-    "created_at": "2026-09-17T18:08:50.989Z",
+    "created_at": "2026-09-18T07:54:29.099Z",
     "approved_at": null,
     "applied_at": null,
+    "outcome": null,
+    "outcome_at": null,
+    "outcome_note": null,
     "notes": null,
     "user_id": 0
    },
@@ -1494,11 +1526,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-14T18:08:14.254Z",
+    "posted_at": "2026-09-15T07:49:35.383Z",
     "content": "Broadfin is a payments company serving 90,000 small businesses.\n\nWe are remote-first and hire globally, with no location requirement.\n\nThe work\n- React and TypeScript across our merchant dashboard\n- Design system ownership alongside two designers\n- Accessibility to WCAG 2.2 AA, which we treat as a requirement and not a nice to have\n\nYou should have\n- 2+ years of frontend work in a component framework\n- Real CSS skill, not just utility classes\n- An eye for performance budgets\n\n$78,000 - $96,000 plus equity.",
     "raw_json": null,
-    "discovered_at": "2026-09-17T18:08:14.244Z",
-    "updated_at": "2026-09-17T18:10:08.369Z",
+    "discovered_at": "2026-09-18T07:49:35.375Z",
+    "updated_at": "2026-09-18T08:00:04.636Z",
     "status": "tailored",
     "score": 84,
     "eligibility": "yes",
@@ -1508,8 +1540,10 @@ const DEMO = {
     "track": "dev",
     "tier": "match",
     "hidden": 0,
+    "missing_runs": 0,
     "notes": null,
-    "payLabel": "$78k–$96k/yr"
+    "payLabel": "$78k–$96k/yr",
+    "content_len": 511
    },
    "application": {
     "id": 3,
@@ -1522,9 +1556,12 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/loom/slides.html",
     "ats_coverage": 13,
     "status": "awaiting_approval",
-    "created_at": "2026-09-17T18:09:33.804Z",
+    "created_at": "2026-09-18T07:58:04.793Z",
     "approved_at": null,
     "applied_at": null,
+    "outcome": null,
+    "outcome_at": null,
+    "outcome_note": null,
     "notes": null,
     "user_id": 0
    },
@@ -1556,12 +1593,13 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"We hire anywhere in the world and have no headquarters.\"",
-   "posted_at": "2026-09-16T18:08:14.246Z",
+   "posted_at": "2026-09-17T07:49:35.380Z",
    "source": "demo",
    "track": "dev",
    "tier": "match",
    "usd_min": 85000,
    "usd_max": 115000,
+   "content_len": 804,
    "app_id": 1,
    "ats": 47,
    "approved_at": null,
@@ -1583,12 +1621,13 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"This role is open to candidates anywhere in the world.\"",
-   "posted_at": "2026-09-15T18:08:14.251Z",
+   "posted_at": "2026-09-16T07:49:35.383Z",
    "source": "demo",
    "track": "ai",
    "tier": "match",
    "usd_min": 95000,
    "usd_max": 130000,
+   "content_len": 624,
    "app_id": 2,
    "ats": 13,
    "approved_at": null,
@@ -1610,12 +1649,13 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"we are remote-first and hire globally, with no location requirement.\"",
-   "posted_at": "2026-09-14T18:08:14.254Z",
+   "posted_at": "2026-09-15T07:49:35.383Z",
    "source": "demo",
    "track": "dev",
    "tier": "match",
    "usd_min": 78000,
    "usd_max": 96000,
+   "content_len": 511,
    "app_id": 3,
    "ats": 13,
    "approved_at": null,
@@ -1637,12 +1677,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Wants 6+ years; the fact bank evidences two. Pay also tops out above the band.",
-   "posted_at": "2026-09-13T18:08:14.255Z",
+   "posted_at": "2026-09-14T07:49:35.385Z",
    "source": "demo",
    "track": "dev",
    "tier": "stretch",
    "usd_min": 140000,
    "usd_max": 175000,
+   "content_len": 215,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1664,12 +1705,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Work from anywhere and the right level, but the posting publishes no salary.",
-   "posted_at": "2026-09-12T18:08:14.255Z",
+   "posted_at": "2026-09-13T07:49:35.387Z",
    "source": "demo",
    "track": "ai",
    "tier": "stretch",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 257,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1691,12 +1733,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Genuinely worldwide, but the fact bank has no shipped game to point at.",
-   "posted_at": "2026-09-11T18:08:14.256Z",
+   "posted_at": "2026-09-12T07:49:35.409Z",
    "source": "demo",
    "track": "game",
    "tier": "stretch",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 141,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1718,12 +1761,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Wants 5+ years of paid media. The fact bank has none, and doNotClaim says so explicitly.",
-   "posted_at": "2026-09-03T18:08:14.271Z",
+   "posted_at": "2026-09-04T07:49:35.455Z",
    "source": "demo",
    "track": "marketing",
    "tier": "no",
    "usd_min": 90000,
    "usd_max": 120000,
+   "content_len": 78,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1745,12 +1789,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Posting says \"unpaid internship, 12 weeks, for course credit\".",
-   "posted_at": "2026-09-04T18:08:14.268Z",
+   "posted_at": "2026-09-05T07:49:35.445Z",
    "source": "demo",
    "track": "game",
    "tier": "no",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 47,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1772,12 +1817,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Posting says \"six month fixed-term contract, no extension planned\". Not full-time.",
-   "posted_at": "2026-09-05T18:08:14.265Z",
+   "posted_at": "2026-09-06T07:49:35.442Z",
    "source": "demo",
    "track": "dev",
    "tier": "no",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 73,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1799,12 +1845,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote — EU timezones\", which is a region and not everywhere.",
-   "posted_at": "2026-09-06T18:08:14.264Z",
+   "posted_at": "2026-09-07T07:49:35.439Z",
    "source": "demo",
    "track": "ai",
    "tier": "regional",
    "usd_min": 70000,
    "usd_max": 90000,
+   "content_len": 56,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1826,12 +1873,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Tokyo (hybrid)\" — two days a week in the office.",
-   "posted_at": "2026-09-07T18:08:14.263Z",
+   "posted_at": "2026-09-08T07:49:35.434Z",
    "source": "demo",
    "track": "dev",
    "tier": "regional",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 46,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1853,12 +1901,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote (New Zealand)\".",
-   "posted_at": "2026-09-08T18:08:14.262Z",
+   "posted_at": "2026-09-09T07:49:35.432Z",
    "source": "demo",
    "track": "marketing",
    "tier": "regional",
    "usd_min": null,
    "usd_max": null,
+   "content_len": 56,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1880,12 +1929,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote — Germany\".",
-   "posted_at": "2026-09-09T18:08:14.258Z",
+   "posted_at": "2026-09-10T07:49:35.430Z",
    "source": "demo",
    "track": "marketing",
    "tier": "regional",
    "usd_min": 55000,
    "usd_max": 70000,
+   "content_len": 97,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -1907,12 +1957,13 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote (United States)\". A stated place is a restriction.",
-   "posted_at": "2026-09-10T18:08:14.257Z",
+   "posted_at": "2026-09-11T07:49:35.424Z",
    "source": "demo",
    "track": "dev",
    "tier": "regional",
    "usd_min": 110000,
    "usd_max": 140000,
+   "content_len": 95,
    "app_id": null,
    "ats": null,
    "approved_at": null,
@@ -2129,6 +2180,12 @@ body { padding-top: 36px; box-sizing: border-box; }
           <option value="pay">Highest pay first</option>
           <option value="new">Newest first</option>
         </select>
+        <select id="f-within" title="How recently the job was posted">
+          <option value="">Any age</option>
+          <option value="24">Posted in 24 hours</option>
+          <option value="72">Posted in 3 days</option>
+          <option value="168">Posted this week</option>
+        </select>
         <input id="f-company" placeholder="Company" style="width:140px">
       </div>
     </header>
@@ -2257,6 +2314,26 @@ const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 // Rupees group as 1,50,000 and dollars as 150,000. Using one locale for both printed the salary
 // band as "$1,50,000", which reads as a typo.
 const nfmt = (n) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+/**
+ * How old a posting is, in the roughest useful unit.
+ *
+ * Freshness decides whether applying is worth the hour it takes: a role posted this morning has a
+ * handful of applicants, the same role three weeks old has several hundred and probably a shortlist
+ * already. The date was in the data all along and the card never showed it.
+ */
+const ago = (iso) => {
+  if (!iso) return null;
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return null;
+  const mins = Math.max(0, Math.round((Date.now() - then.getTime()) / 60000));
+  if (mins < 60) return { text: `${mins || 1}m ago`, fresh: true };
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return { text: `${hrs}h ago`, fresh: true };
+  const days = Math.round(hrs / 24);
+  if (days < 7) return { text: `${days}d ago`, fresh: days <= 1 };
+  if (days < 31) return { text: `${Math.round(days / 7)}w ago`, fresh: false };
+  return { text: `${Math.round(days / 30)}mo ago`, fresh: false, stale: true };
+};
 const usd = (n) => '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
 let SYM = '₹';
 // The money tab sets SYM from config, but Overview prints a balance too and it renders first - so
@@ -2423,7 +2500,20 @@ LOAD.overview = async () => {
     stat(nfmt(o.jobs.total), 'role-relevant postings tracked') +
     stat(e.yes ?? 0, 'eligible right now', 'good') +
     stat(e.unclear ?? 0, 'need a human read', 'warn') +
-    stat(o.pendingApproval, 'packets awaiting your approval', o.pendingApproval ? 'hot' : '');
+    stat(o.pendingApproval, 'packets awaiting your approval', o.pendingApproval ? 'hot' : '') +
+    (() => {
+      const a = o.applications || { applied: 0, byOutcome: [] };
+      const by = Object.fromEntries((a.byOutcome || []).map((r) => [r.outcome, r.n]));
+      const heard = (by.rejected || 0) + (by.interview || 0) + (by.offer || 0);
+      if (!a.applied) return '';
+      const parts = [
+        by.interview ? `${by.interview} interview${by.interview === 1 ? '' : 's'}` : null,
+        by.offer ? `${by.offer} offer${by.offer === 1 ? '' : 's'}` : null,
+        by.rejected ? `${by.rejected} rejected` : null,
+        a.applied - heard > 0 ? `${a.applied - heard} still silent` : null,
+      ].filter(Boolean).join(' · ');
+      return stat(a.applied, `applied — ${parts || 'nothing back yet'}`, by.offer ? 'good' : '');
+    })();
 
   if (o.money?.currency) SYM = SYMBOLS[o.money.currency] || o.money.currency + ' ';
   $('#ov-money').innerHTML = o.money.allocated
@@ -2474,6 +2564,7 @@ function filters() {
   if (hi) p.set('salaryMax', hi);
   if (!$('#f-unknown').checked) p.set('unknownSalary', '0');
   if ($('#f-hidden').checked) p.set('hidden', '1');
+  const within = $('#f-within')?.value; if (within) p.set('within', within);
   p.set('sort', $('#f-sort').value);
   return p;
 }
@@ -2554,6 +2645,11 @@ async function loadJobs(append = false) {
           ${j.payLabel ? `<span class="tag pay">${esc(j.payLabel)}</span>` : '<span class="tag">pay not published</span>'}
           <span class="tag">${esc((j.location_raw || 'location not stated').slice(0, 36))}</span>
           <span class="tag">${esc(j.source)}</span>
+          ${(() => { const a = ago(j.posted_at); return a
+            ? `<span class="tag ${a.fresh ? 'ok' : a.stale ? 'warn' : ''}" title="Posted ${esc(new Date(j.posted_at).toLocaleString())}">${a.text}</span>`
+            : ''; })()}
+          ${j.content_len != null && j.content_len < 1200
+            ? '<span class="tag warn" title="The board published a summary, not the full posting. Open the original before writing anything for it.">summary only</span>' : ''}
           ${j.app_id ? `<span class="tag ok">packet ready${j.ats != null ? ` · ATS ${j.ats}%` : ''}</span>` : ''}
           ${j.approved_at ? '<span class="tag ok">approved</span>' : ''}
         </div>
@@ -2587,13 +2683,14 @@ $('#track-chips').onclick = (e) => {
   renderChips().then(() => loadJobs());
 };
 
-['#f-sort', '#f-unknown', '#f-hidden'].forEach((sel) => { $(sel).onchange = () => loadJobs(); });
+['#f-sort', '#f-within', '#f-unknown', '#f-hidden'].forEach((sel) => { const el = $(sel); if (el) el.onchange = () => loadJobs(); });
 ['#f-company', '#f-smin', '#f-smax'].forEach((sel) => {
   $(sel).oninput = () => { clearTimeout(window._t); window._t = setTimeout(() => loadJobs(), 320); };
 });
 $('#f-clear').onclick = () => {
   $('#f-company').value = ''; $('#f-smin').value = ''; $('#f-smax').value = '';
   $('#f-unknown').checked = true; $('#f-hidden').checked = false; $('#f-sort').value = 'score';
+  if ($('#f-within')) $('#f-within').value = '';
   activeTier = 'match'; renderTiers();
   TRACKS.forEach((t) => activeTracks.add(t.key));
   renderChips().then(() => loadJobs());
@@ -2608,9 +2705,9 @@ $('#jobs-list').onclick = async (e) => {
   if (bd) {
     e.stopPropagation();
     bd.disabled = true; bd.textContent = 'Building…';
-    await api(`/api/apply/${bd.dataset.build}/init`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    await api(`/api/apply/${bd.dataset.build}/render`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    toast('Packet built'); loadJobs();
+    // One click, the whole packet, including both PDFs. It takes a couple of minutes, so it streams
+    // into the Search view's console instead of leaving a dead button and a spinner.
+    buildPacket(bd.dataset.build);
     return;
   }
 
@@ -2630,6 +2727,22 @@ $('#jobs-list').onclick = async (e) => {
   }
   const j = e.target.closest('.job'); if (j) openJob(j.dataset.id);
 };
+
+// Recording what came back. The owner reporting a fact - there is no path by which anything else
+// can set this.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('.outcome-btn');
+  if (!b) return;
+  e.stopPropagation();
+  const note = prompt(`Where did "${b.dataset.outcome}" come from?\n\nAn email subject line is ideal — in three months this is the only thing that tells you the difference between a real verdict and a mis-click.`, '');
+  if (note === null) return;
+  const r = await api(`/api/apply/${b.dataset.job}/outcome`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ outcome: b.dataset.outcome, note }),
+  });
+  toast(r.ok ? `Recorded: ${b.dataset.outcome}` : (r.error || 'Failed'));
+  if (r.ok) { document.querySelector('.drawer')?.remove(); document.querySelector('.scrim')?.remove(); LOAD.overview(); loadJobs(); }
+});
 
 /* ── job drawer ─────────────────────────────────────────── */
 async function openJob(id, { apply = false } = {}) {
@@ -2663,9 +2776,11 @@ async function openJob(id, { apply = false } = {}) {
       ${f('Tailored resume (PDF)', pk?.resumePdf || 'x', pk?.resumePdf)}
       ${f('Loom script', 'loom/script.md', pk?.loomScript)}
       ${f('Loom slides', 'loom/slides.html', pk?.loomSlides)}
-      ${pk?.loomSlides ? `<div class="file" style="gap:8px">
-        <span>Download the deck</span>
-        <span style="display:flex;gap:8px">
+      ${pk?.loomSlides ? `<div class="file" style="gap:8px;flex-wrap:wrap">
+        <span>The deck</span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
+             href="/api/slides/${id}/pdf?inline=1" target="_blank">View</a>
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
              href="packet/${id}/loom/slides.pdf" download>PDF</a>
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
@@ -2673,6 +2788,13 @@ async function openJob(id, { apply = false } = {}) {
         </span></div>` : ''}
       ${f('Recording checklist', 'loom/checklist.md', pk?.loomChecklist)}
       ${f('Job description', 'job.txt', pk?.jobText)}
+      ${a?.applied_at ? `<div class="file" style="gap:8px;flex-wrap:wrap">
+        <span>What came back${a.outcome ? `: <b>${esc(a.outcome)}</b>` : ''}</span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+          ${['rejected', 'interview', 'offer', 'ghosted'].map((o) => `
+            <button class="act ghost outcome-btn" data-outcome="${o}" data-job="${id}"
+                    style="padding:5px 9px;font-size:11px${a.outcome === o ? ';border-color:var(--accent)' : ''}">${o}</button>`).join('')}
+        </span></div>` : ''}
     </div>
 
     ${a ? `<dl class="kv"><dt>ATS coverage</dt><dd>${a.ats_coverage ?? '–'}%</dd></dl>` : ''}
@@ -2791,7 +2913,7 @@ LOAD.money = async () => {
       const isOver = e.spent > e.planned;
       const w = e.planned ? Math.min(100, e.spent / e.planned * 100) : 0;
       const cls = isOver ? 'over' : (e.kind === 'save' || e.kind === 'invest') ? 'save' : '';
-      return `<div class="env">
+      return `<div class="env wide">
         <span>${esc(e.name)}<div class="kind">${esc(e.kind)}</div></span>
         <span class="bar"><i class="${cls}" style="width:${w}%"></i></span>
         <span class="amt"><b>${M(e.spent)}</b> / ${M(e.planned)}
@@ -3009,6 +3131,11 @@ function runTask(what) {
   const card = $('#progress-card');
   const lines = $('#progress-lines');
   box.textContent = ''; lines.innerHTML = '';
+  // Show the output while it runs. It was hidden behind a "Show raw output" toggle, which is a
+  // reasonable default for a finished run and the wrong one for a live one: the whole point of a
+  // two-minute job is watching it move.
+  box.hidden = false;
+  const tog = $('#toggle-log'); if (tog) tog.textContent = 'Hide raw output';
   card.hidden = false;
   $('#progress-title').textContent = what === 'hunt' ? 'Searching for jobs…'
     : what === 'rescreen' ? 'Re-applying your filters…'
@@ -3019,8 +3146,18 @@ function runTask(what) {
   let done = 0;
   const summary = [];
 
+  // Pick out the parts worth seeing at a glance. Everything is escaped first, so a job title
+  // containing a bracket cannot inject markup into the console.
+  const paint = (line) => esc(line)
+    .replace(/^(\s*)([a-z][\w.+-]*)(\s{2,})(\d[\d,]*)( returned)/i,
+             (m, a, src, gap, n, tail) => `${a}<b>${src}</b>${gap}<span class="n">${n}</span>${tail}`)
+    .replace(/(&lt;-- NOTHING[^\n]*)/g, '<span class="bad">$1</span>')
+    .replace(/\b(ERROR|FAILED|rate.limited)\b/gi, '<span class="bad">$&</span>')
+    .replace(/\b(eligible|stored|ok|Done|complete|ready)\b/g, '<span class="good">$&</span>')
+    .replace(/^(\s*[-=─]{3,}.*)$/gm, '<span class="dim">$1</span>');
+
   const onLine = (line) => {
-    box.insertAdjacentHTML('beforeend', esc(line) + '\n');
+    box.insertAdjacentHTML('beforeend', paint(line) + '\n');
     box.scrollTop = box.scrollHeight;
 
     const src = /^\s{2}(\S[\S ]*?)\s{2,}(\d+) returned/.exec(line);
@@ -3052,9 +3189,17 @@ function runTask(what) {
              <span>${esc(k.startsWith('track:') ? k.slice(6) : k)}</span>
              <span class="amt"><b>${esc(v)}</b></span></div>`).join('') + `</div>`);
     }
+    // Straight to what is new.
+    //
+    // Collecting only the last 24 hours would mean throwing away every older posting on every run,
+    // and a role posted last week that you have not seen is still a role you have not seen. The
+    // collection keeps everything; this puts the fresh ones in front of you, which is the part that
+    // actually matters after a run.
     lines.insertAdjacentHTML('beforeend',
-      `<div class="row" style="margin-top:14px"><button class="act" onclick="show('jobs')">See the jobs</button>
-       <button class="act ghost" onclick="show('near')">See what was rejected</button></div>`);
+      `<div class="row" style="margin-top:14px">
+         <button class="act" onclick="show('jobs');$('#f-within').value='24';$('#f-sort').value='new';loadJobs()">Posted in the last 24 hours</button>
+         <button class="act ghost" onclick="show('jobs')">All the jobs</button>
+         <button class="act ghost" onclick="show('near')">What was rejected</button></div>`);
     refreshCounts(); renderChips();
   };
 
@@ -3087,6 +3232,58 @@ $('#toggle-log').onclick = () => {
   c.hidden = !c.hidden;
   $('#toggle-log').textContent = c.hidden ? 'Show raw output' : 'Hide raw output';
 };
+
+/**
+ * Build one packet, end to end, with the output on screen.
+ *
+ * Reuses the Search view's console because a full build is a two-minute job that spawns Chrome
+ * twice, and a button that says "Building…" for two minutes with nothing else moving is
+ * indistinguishable from one that has hung.
+ */
+function buildPacket(id) {
+  if (running) { toast('Something is already running.'); return; }
+  running = true;
+  show('search');
+  const box = $('#console'), card = $('#progress-card'), lines = $('#progress-lines');
+  box.hidden = false; box.textContent = ''; lines.innerHTML = '';
+  card.hidden = false;
+  $('#progress-title').textContent = 'Building the packet…';
+  $('#progress-bar').style.width = '6%';
+
+  fetch(`/api/apply/${id}/build`, { method: 'POST' }).then((resp) => {
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    const pump = () => reader.read().then(({ done, value }) => {
+      if (done) { running = false; return; }
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const part of parts) {
+        const ev = /^event: (\w+)/m.exec(part)?.[1];
+        const dm = /^data: (.*)$/m.exec(part)?.[1];
+        if (!dm) continue;
+        const data = JSON.parse(dm);
+        if (ev === 'line') {
+          box.insertAdjacentHTML('beforeend', esc(String(data)) + '\n');
+          box.scrollTop = box.scrollHeight;
+          const step = /^\[(\d)\/4\]/.exec(String(data));
+          if (step) $('#progress-bar').style.width = (6 + Number(step[1]) / 4 * 88) + '%';
+        }
+        if (ev === 'done') {
+          running = false;
+          $('#progress-bar').style.width = '100%';
+          $('#progress-title').textContent = data.code === 0 ? 'Packet ready' : 'Build failed';
+          lines.innerHTML = data.code === 0
+            ? `<div class="row" style="margin-top:12px"><button class="act" onclick="show('jobs');openJob(${Number(id)})">Open the packet</button></div>`
+            : '<div class="note">Check the output above.</div>';
+          loadJobs();
+        }
+      }
+      return pump();
+    });
+    return pump();
+  }).catch((e) => { running = false; box.textContent += `\nERROR ${e.message}`; });
+}
 
 $$('[data-run]').forEach((b) => b.onclick = () => { show('search'); runTask(b.dataset.run); });
 $('#btn-hunt').onclick = () => { show('search'); runTask('hunt'); };

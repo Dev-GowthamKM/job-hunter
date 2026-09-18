@@ -47,6 +47,38 @@ body {
   min-height: 297mm;
 }
 
+/* On screen this is a document, not a web page.
+ *
+ * The sheet had a height but no width, so in a browser it stretched or squashed to whatever the
+ * window happened to be. In a 560px pane the 33.5% rail became about 90px and the profile
+ * paragraph wrapped one word per line - the resume looked broken even though the printed PDF was
+ * correct, because Chrome renders the PDF at A4 regardless.
+ *
+ * Fixed at A4 and centred on a grey surround, so what you see is what the PDF is. Narrow screens
+ * scroll it, the way any document viewer does, rather than reflowing a layout that only makes
+ * sense at one width.
+ */
+@media screen {
+  body {
+    background: #e7ebf0;
+    margin: 0;
+    padding: 18px 0;
+  }
+  .sheet {
+    width: 210mm;
+    margin: 0 auto;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(16, 32, 56, .16), 0 10px 34px rgba(16, 32, 56, .13);
+  }
+}
+
+/* Print is untouched: @page already sets A4 with no margin, and a width or shadow here would
+ * fight it. */
+@media print {
+  body { background: none; padding: 0; }
+  .sheet { width: auto; margin: 0; box-shadow: none; }
+}
+
 /* ── header band ────────────────────────────────────────── */
 header {
   grid-column: 1 / -1;

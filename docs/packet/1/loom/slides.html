@@ -91,8 +91,21 @@ li b, b { font-weight:800; color:#fff; }
 
 footer {
   position:fixed; bottom:2.6vh; left:0; right:0;
-  display:flex; justify-content:space-between; padding:0 3vw;
+  display:flex; justify-content:space-between; align-items:center; gap:14px;
+  padding:0 3vw;
   font-size:12.5px; color:var(--muted);
+}
+/* The name and the key hints are the two flexible ends; the dots must never be squeezed. Without
+   this the title ran straight through the dots on a narrow window and "F full screen" wrapped onto
+   two lines under the arrows. */
+footer > span:first-child { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+footer > span:last-child { flex:0 0 auto; white-space:nowrap; }
+.dots { flex:0 0 auto; }
+/* On a phone the deck is for reading, not presenting, so the keyboard hints go and the name gets
+   the room. Swipe and the arrows still work. */
+@media (max-width:640px) {
+  footer > span:last-child { display:none; }
+  footer { font-size:11.5px; }
 }
 .dots { display:flex; gap:7px; align-items:center; }
 .dots i { width:7px; height:7px; border-radius:50%; background:var(--line); display:block; }

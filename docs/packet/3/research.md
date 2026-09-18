@@ -1,8 +1,14 @@
 # Broadfin — Frontend Engineer
 
 Job 3 · https://example.com/jobs/broadfin
-Generated from the posting on 2026-09-17. Mechanical pass — a
+Generated from the posting on 2026-09-18. Mechanical pass — a
 `job-researcher` run will overwrite this with funding, news and a confirmed remote policy.
+
+> **This is a summary, not the full posting.** demo gave 511 characters where a
+> real description runs to several thousand. Open https://example.com/jobs/broadfin and read it before writing
+> anything for this job. The requirement list, technology match and ATS score below are
+> drawn from what little there is, so treat a low score as missing data rather than a
+> weak fit.
 
 ## What the posting says they do
 
