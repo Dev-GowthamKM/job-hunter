@@ -248,7 +248,15 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
   nav button { white-space:nowrap; }
   nav button.on::before { display:none; }
   h1 { font-size:24px; }
-  .env { grid-template-columns:86px 1fr; } .env .amt { grid-column:1/-1; text-align:left; }
+  /* Two different rows share .env and they need different things on a phone.
+     A money envelope's amount is "Rs1,100 / Rs1,100" plus a sub-line, so it genuinely needs its own
+     row - that is what .wide marks. The source chart's amount is a bare number like 3,078, and
+     wrapping that pushed every count onto a line of its own and squeezed the label into 86px,
+     where "workingnomads" ran straight through its bar. */
+  .env { grid-template-columns:minmax(0,88px) 1fr auto; gap:10px; }
+  .env > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .env.wide { grid-template-columns:86px 1fr; }
+  .env.wide .amt { grid-column:1/-1; text-align:left; }
   .kv { grid-template-columns:1fr; gap:2px 0; } .kv dt { margin-top:8px; }
 }
 
@@ -900,9 +908,11 @@ async function openJob(id, { apply = false } = {}) {
       ${f('Tailored resume (PDF)', pk?.resumePdf || 'x', pk?.resumePdf)}
       ${f('Loom script', 'loom/script.md', pk?.loomScript)}
       ${f('Loom slides', 'loom/slides.html', pk?.loomSlides)}
-      ${pk?.loomSlides ? `<div class="file" style="gap:8px">
-        <span>Download the deck</span>
-        <span style="display:flex;gap:8px">
+      ${pk?.loomSlides ? `<div class="file" style="gap:8px;flex-wrap:wrap">
+        <span>The deck</span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
+             href="/api/slides/${id}/pdf?inline=1" target="_blank">View</a>
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
              href="/api/slides/${id}/pdf" download>PDF</a>
           <a class="act ghost" style="padding:5px 10px;font-size:11.5px;text-decoration:none"
@@ -1028,7 +1038,7 @@ LOAD.money = async () => {
       const isOver = e.spent > e.planned;
       const w = e.planned ? Math.min(100, e.spent / e.planned * 100) : 0;
       const cls = isOver ? 'over' : (e.kind === 'save' || e.kind === 'invest') ? 'save' : '';
-      return `<div class="env">
+      return `<div class="env wide">
         <span>${esc(e.name)}<div class="kind">${esc(e.kind)}</div></span>
         <span class="bar"><i class="${cls}" style="width:${w}%"></i></span>
         <span class="amt"><b>${M(e.spent)}</b> / ${M(e.planned)}

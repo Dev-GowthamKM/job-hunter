@@ -539,11 +539,15 @@ const server = createServer(async (req, res) => {
         const { toPdf, toPptx } = await import('../jobs/slides-export.mjs');
         const file = format === 'pptx' ? toPptx(Number(id)) : toPdf(Number(id));
         const buf = readFileSync(file);
+        // `attachment` forces a download even when the link opens in a new tab, so there was no
+        // way to look at the deck before saving it. ?inline=1 serves the same bytes for viewing.
+        // Only meaningful for the PDF; a .pptx has nothing to render it in a browser.
+        const inline = q.inline === '1' && format === 'pdf';
         res.writeHead(200, {
           'content-type': format === 'pptx'
             ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
             : 'application/pdf',
-          'content-disposition': `attachment; filename="slides.${format}"`,
+          'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="slides.${format}"`,
         });
         return res.end(buf);
       } catch (e) {
