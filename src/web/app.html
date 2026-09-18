@@ -789,6 +789,8 @@ async function loadJobs(append = false) {
           ${j.payLabel ? `<span class="tag pay">${esc(j.payLabel)}</span>` : '<span class="tag">pay not published</span>'}
           <span class="tag">${esc((j.location_raw || 'location not stated').slice(0, 36))}</span>
           <span class="tag">${esc(j.source)}</span>
+          ${j.content_len != null && j.content_len < 1200
+            ? '<span class="tag warn" title="The board published a summary, not the full posting. Open the original before writing anything for it.">summary only</span>' : ''}
           ${j.app_id ? `<span class="tag ok">packet ready${j.ats != null ? ` · ATS ${j.ats}%` : ''}</span>` : ''}
           ${j.approved_at ? '<span class="tag ok">approved</span>' : ''}
         </div>

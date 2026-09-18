@@ -72,11 +72,15 @@ function plist() {
        has not let go yet. launchd throttles this to one attempt every 10 seconds, so a genuine
        crash loop costs nothing and a transient failure heals itself. -->
   <key>KeepAlive</key><true/>
-  <!-- Adaptive, not Background. "Background" is launchd's label for work nobody is waiting on, and
-       it comes with throttled disk I/O - wrong for a server whose entire job is answering a person
-       who is looking at the page right now. "Adaptive" lets it sit idle cheaply and be promoted
-       the moment it has a request in hand. -->
-  <key>ProcessType</key><string>Adaptive</string>
+  <!-- Interactive, and this is measured, not chosen from the documentation.
+       "Background" throttles disk I/O. "Adaptive" is documented as promoting itself when the job
+       has work in hand, and it does not: with Adaptive, /api/profile took 13-26 seconds under
+       launchd while the identical server started from a shell answered the same request in 0.9.
+       Same code, same database, same machine. The dashboard is something a person is waiting on,
+       so it says so. -->
+  <key>ProcessType</key><string>Interactive</string>
+  <!-- Belt and braces: never give this process low-priority I/O, whatever the type implies. -->
+  <key>LowPriorityIO</key><false/>
   <key>StandardOutPath</key><string>${esc(LOG)}</string>
   <key>StandardErrorPath</key><string>${esc(LOG)}</string>
   <key>EnvironmentVariables</key>

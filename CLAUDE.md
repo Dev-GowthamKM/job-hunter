@@ -327,6 +327,29 @@ wrong, and only the first was the one I introduced:
 Workable concurrency is **2**, which is measurably faster than sequential and stayed under the
 limit. The number is empirical. Raise it only with evidence.
 
+# launchd's ProcessType decides how fast the dashboard is
+
+Measured, not read off the documentation. With `ProcessType: Adaptive`, `/api/profile` took 13-26
+seconds under launchd while the identical server started from a shell answered in 0.9 - same code,
+same database, same machine. Adaptive is documented as promoting itself when the job has work in
+hand; it does not. `Interactive` fixed it: 11s -> 1.2s.
+
+If an endpoint is inexplicably slow only under the service, check this before optimising the query.
+
+# Aggregators publish summaries, not postings
+
+RemoteOK's API returns about 600 characters where the employer's page runs to several thousand, and
+it cannot be enriched: the JSON-LD on their pages holds even less (306-324 characters), and
+`apply_url` points back at RemoteOK rather than the employer's ATS.
+
+This matters because the thin sources are disproportionately the ones with genuinely worldwide
+roles, so **4 of the 15 match-tier jobs are summaries**. Everything downstream is then derived from
+a blurb: the requirements list, the technology match, the ATS score. Mirantis scores 0% against 634
+characters, which reads as a weak candidate rather than as missing data.
+
+Not fixable, so it is labelled instead: a `summary only` tag on the row, and a blockquote at the top
+of the dossier saying to open the original before writing anything.
+
 # Closed postings: absence from the board, not a dead link
 
 Fetching a posting's own page does not work. Railway serves a 1.2KB SPA shell whether the job is

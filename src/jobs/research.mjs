@@ -123,6 +123,23 @@ export function renderResearch(job, r, master) {
   p(`\`job-researcher\` run will overwrite this with funding, news and a confirmed remote policy.`);
   p('');
 
+  // Say it at the top, before anything below is read as analysis.
+  //
+  // Aggregators like RemoteOK publish a summary, not the posting: their API returns about 600
+  // characters where the employer's own page runs to several thousand. Everything downstream -
+  // the requirements list, the technology match, the ATS score - is then derived from a blurb, and
+  // reads as a weak candidate rather than as missing data. A 0% ATS score against 634 characters
+  // means nothing at all, and the dossier should not let that be mistaken for a verdict.
+  const len = (job.content || '').length;
+  if (len < 1200) {
+    p(`> **This is a summary, not the full posting.** ${job.source} gave ${len} characters where a`);
+    p(`> real description runs to several thousand. Open ${job.url} and read it before writing`);
+    p(`> anything for this job. The requirement list, technology match and ATS score below are`);
+    p(`> drawn from what little there is, so treat a low score as missing data rather than a`);
+    p(`> weak fit.`);
+    p('');
+  }
+
   p('## What the posting says they do');
   p('');
   p(r.firstPara.replace(/\s+/g, ' ').slice(0, 700));

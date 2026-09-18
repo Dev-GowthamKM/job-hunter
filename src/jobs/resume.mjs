@@ -107,8 +107,14 @@ export function addResume(path) {
 
 /** The language each track's jobs actually use, taken from real postings already collected. */
 function trackLanguage(trackKey, limit = 120) {
+  // ORDER BY COALESCE(score,0) is an expression, so no index can serve it: SQLite sorted every row
+  // of the track - about 3,500 for dev - and each row carries up to 20KB of job description. The
+  // Profile tab called this once per track and took 19 seconds.
+  //
+  // Plain `score DESC` sorts NULLs last in SQLite, which is what COALESCE(score,0) was for, and it
+  // can walk idx_jobs_track_score instead.
   const rows = db().prepare(
-    'SELECT content FROM jobs WHERE track = ? AND content IS NOT NULL ORDER BY COALESCE(score,0) DESC LIMIT ?'
+    'SELECT content FROM jobs WHERE track = ? AND content IS NOT NULL ORDER BY score DESC LIMIT ?'
   ).all(trackKey, limit);
   return rows.map((r) => r.content).join('\n');
 }

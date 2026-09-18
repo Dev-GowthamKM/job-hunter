@@ -156,6 +156,14 @@ CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source);
 CREATE INDEX IF NOT EXISTS idx_jobs_hidden_tier  ON jobs(hidden, tier);
 CREATE INDEX IF NOT EXISTS idx_jobs_hidden_track ON jobs(hidden, track);
 CREATE INDEX IF NOT EXISTS idx_jobs_elig_hidden_track ON jobs(eligibility, hidden, track);
+-- The Profile tab reads the top-scoring postings per track to work out what that track's language
+-- actually is. Without this it sorted the whole track on an unindexed expression.
+CREATE INDEX IF NOT EXISTS idx_jobs_track_score ON jobs(track, score DESC);
+-- The near-miss view needs the REASON for every rejected posting in order to group them, and the
+-- title for the samples it shows. idx_jobs_elig_company covers neither, so 5,596 rows each meant a
+-- random lookup into a row carrying up to 20KB of job description: 12.5 seconds for a page that
+-- displays 25 rows per group. Carrying the two text columns in the index costs about a megabyte.
+CREATE INDEX IF NOT EXISTS idx_jobs_nearmiss ON jobs(eligibility, company, id, title, eligibility_reason);
 
 CREATE TABLE IF NOT EXISTS applications (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -188,6 +188,7 @@ function jobList(q) {
     SELECT id, company, company_tier, title, url, apply_url, location_raw, salary_min, salary_max,
            salary_currency, salary_period, score, status, eligibility, eligibility_reason,
            posted_at, source, track, tier, ${usdMin} AS usd_min, ${usdMax} AS usd_max,
+           LENGTH(COALESCE(content,'')) AS content_len,
            (SELECT a.id FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS app_id,
            (SELECT a.ats_coverage FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS ats,
            (SELECT a.approved_at FROM applications a WHERE a.job_id = jobs.id ORDER BY a.id DESC LIMIT 1) AS approved_at
@@ -259,7 +260,7 @@ function jobDetail(id) {
   const file = (f) => (existsSync(join(dir, f)) ? f : null);
   const resumePdf = app?.resume_path ? app.resume_path.split('/').pop() : null;
   return {
-    job: { ...job, payLabel: pay(job) },
+    job: { ...job, payLabel: pay(job), content_len: (job.content || '').length },
     application: app || null,
     packet: app ? {
       research: file('research.md'),
