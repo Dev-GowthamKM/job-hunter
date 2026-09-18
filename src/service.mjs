@@ -16,10 +16,10 @@
 // Mac being asleep or switched off, because nothing running on this machine can. The server binds
 // 127.0.0.1, so it is reachable from this Mac and nowhere else - that is the same privacy
 // decision the server makes, not an extra restriction added here.
-import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync } from 'node:fs';
+import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { get as httpGet } from 'node:http';
 
@@ -29,8 +29,8 @@ const PLIST = join(homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
 const LOGDIR = join(homedir(), 'Library', 'Logs', 'job-hunter');
 const LOG = join(LOGDIR, 'dashboard.log');
 
-// The second agent: the daily collection. Separate from the dashboard on purpose - a hunt runs
-// for hours and must not be able to take the dashboard down with it when it fails.
+// The second agent: the daily collection. Separate from the dashboard on purpose - a failing
+// crawl must not be able to take the dashboard down with it.
 const HUNT_LABEL = 'com.jobhunter.daily';
 const HUNT_PLIST = join(homedir(), 'Library', 'LaunchAgents', `${HUNT_LABEL}.plist`);
 const HUNT_LOG = join(LOGDIR, 'daily.log');
@@ -108,8 +108,8 @@ function huntPlist(hour, minute) {
   <key>WorkingDirectory</key><string>${esc(ROOT)}</string>
   <key>StartCalendarInterval</key>
   <dict><key>Hour</key><integer>${hour}</integer><key>Minute</key><integer>${minute}</integer></dict>
-  <!-- Not RunAtLoad. This is a two-hour job that hits several dozen job boards; firing it every
-       time someone logs in would be rude to those boards and useless to the owner. -->
+  <!-- Not RunAtLoad. This hits 84 job boards; firing it every time someone logs in would be rude
+       to them and useless to the owner. -->
   <key>RunAtLoad</key><false/>
   <!-- Not KeepAlive either. This one is supposed to finish. KeepAlive on a task that exits is an
        infinite loop against other people's APIs. -->
@@ -208,6 +208,99 @@ if (cmd === 'install') {
   console.log(`It starts itself at login and restarts itself if it crashes.`);
   console.log(`Logs: ${LOG}`);
 
+} else if (cmd === 'shortcut') {
+  // A thing you can find, instead of a URL you have to remember.
+  //
+  // The dashboard has lived at 127.0.0.1:4321 all along, which is fine for a machine and useless
+  // for a person: an address with no icon, no Spotlight entry and no Dock presence has to be asked
+  // for every single time. This is a minimal .app bundle - a plist and a shell script - so the
+  // dashboard behaves like an application: Cmd-Space, "job hunter", return.
+  //
+  // It also starts the service if it is not running, so the app works on a fresh boot before
+  // launchd has got round to it, and waits for the port rather than opening a browser onto nothing.
+  const appDir = join(homedir(), 'Applications', 'Job Hunter.app');
+  const macos = join(appDir, 'Contents', 'MacOS');
+  mkdirSync(macos, { recursive: true });
+
+  writeFileSync(join(appDir, 'Contents', 'Info.plist'), `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Job Hunter</string>
+  <key>CFBundleDisplayName</key><string>Job Hunter</string>
+  <key>CFBundleIdentifier</key><string>com.jobhunter.launcher</string>
+  <key>CFBundleVersion</key><string>1.0</string>
+  <key>CFBundleExecutable</key><string>jobhunter</string>
+  <key>CFBundleIconFile</key><string>icon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+`);
+
+  const launcher = join(macos, 'jobhunter');
+  writeFileSync(launcher, `#!/bin/sh
+# Opens the dashboard, starting it first if it is not up.
+URL="http://127.0.0.1:${PORT}/"
+if ! curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${PORT}/api/session"; then
+  "${NODE}" --no-warnings=ExperimentalWarning "${join(ROOT, 'src', 'service.mjs')}" install >/dev/null 2>&1
+  i=0
+  while [ $i -lt 60 ]; do
+    curl -s -o /dev/null --max-time 2 "http://127.0.0.1:${PORT}/api/session" && break
+    sleep 1
+    i=$((i+1))
+  done
+fi
+exec open "$URL"
+`);
+  spawnSync('chmod', ['+x', launcher]);
+
+  // An icon, so it is recognisable in the Dock rather than a blank page. Rendered from the SVG in
+  // templates/ with tools macOS already has, and skipped without complaint if any of them is
+  // missing - a launcher with a generic icon still launches.
+  try {
+    const work = join(tmpdir(), 'jobhunter-icon');
+    const iconset = join(work, 'icon.iconset');
+    rmSync(work, { recursive: true, force: true });
+    mkdirSync(iconset, { recursive: true });
+    spawnSync('qlmanage', ['-t', '-s', '1024', '-o', work, join(ROOT, 'templates', 'icon.svg')]);
+    const png = join(work, 'icon.svg.png');
+    if (existsSync(png)) {
+      for (const [name, px] of [['icon_16x16.png', 16], ['icon_16x16@2x.png', 32],
+        ['icon_32x32.png', 32], ['icon_32x32@2x.png', 64], ['icon_128x128.png', 128],
+        ['icon_128x128@2x.png', 256], ['icon_256x256.png', 256], ['icon_256x256@2x.png', 512],
+        ['icon_512x512.png', 512], ['icon_512x512@2x.png', 1024]]) {
+        spawnSync('sips', ['-z', String(px), String(px), png, '--out', join(iconset, name)]);
+      }
+      mkdirSync(join(appDir, 'Contents', 'Resources'), { recursive: true });
+      spawnSync('iconutil', ['-c', 'icns', iconset, '-o', join(appDir, 'Contents', 'Resources', 'icon.icns')]);
+    }
+  } catch { /* the launcher matters, the icon does not */ }
+
+  // Touching the bundle makes Finder and Spotlight notice it straight away rather than whenever
+  // they next get round to re-indexing.
+  spawnSync('touch', [appDir]);
+  spawnSync('/usr/bin/mdimport', [appDir]);
+
+  console.log(`Installed: ${appDir}`);
+  console.log('');
+  console.log('  Spotlight   Cmd-Space, type "job hunter", press return');
+  console.log('  Dock        open it once, then right-click its icon > Options > Keep in Dock');
+  console.log('');
+  console.log(`  It starts the dashboard first if it is not already running.`);
+  console.log(`  The address, if you ever need it: http://127.0.0.1:${PORT}`);
+  console.log(`  or the friendlier http://jobhunter.localhost:${PORT}`);
+
+} else if (cmd === 'open') {
+  const state = await answering();
+  if (!state) {
+    console.log('Not running. Starting it first…');
+    spawnSync(process.execPath, ['--no-warnings=ExperimentalWarning', join(ROOT, 'src', 'service.mjs'), 'install'],
+      { stdio: 'inherit' });
+  }
+  spawnSync('open', [`http://127.0.0.1:${PORT}/`]);
+  console.log(`Opened http://127.0.0.1:${PORT}`);
+
 } else if (cmd === 'schedule') {
   const at = (process.argv.find((a) => a.startsWith('--at=')) || '--at=07:00').slice(5);
   const m = /^(\d{1,2})(?::(\d{2}))?$/.exec(at);
@@ -230,7 +323,7 @@ if (cmd === 'install') {
   }
   const hh = String(hour).padStart(2, '0'), mm = String(minute).padStart(2, '0');
   console.log(`Collecting every day at ${hh}:${mm}. It collects and scores.`);
-  console.log(`Budget about two hours: a measured full run took 124 minutes over 16,614 postings.`);
+  console.log(`A full run is about two minutes across 84 boards and roughly 16,000 postings.`);
   console.log(`If the Mac is asleep at ${hh}:${mm}, launchd runs it when the Mac next wakes.`);
   console.log(`It never applies to anything. That still needs you.`);
   console.log(`Logs: ${HUNT_LOG}`);
@@ -244,7 +337,7 @@ if (cmd === 'install') {
 } else if (cmd === 'hunt-now') {
   if (!existsSync(HUNT_PLIST)) { console.error('Not scheduled yet. Run: npm run service schedule'); process.exit(1); }
   launchctl('kickstart', `${TARGET}/${HUNT_LABEL}`);
-  console.log(`Started. A measured full run took about two hours.`);
+  console.log(`Started. A full run takes about two minutes.`);
   console.log(`Watch it:  tail -f ${HUNT_LOG}`);
 
 } else if (cmd === 'uninstall') {

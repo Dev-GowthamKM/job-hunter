@@ -215,6 +215,19 @@ Three things about it that are deliberate:
   descriptions overnight is useful; a model deciding to submit an application is the failure this
   system exists to prevent, and a scheduled task is the worst possible place to allow it.
 
+# The dashboard needs to be findable, not just running
+
+It lived at 127.0.0.1:4321 with no icon, no Spotlight entry and no Dock presence, so the owner had
+to ask for the address every single time. Running is not the same as reachable.
+
+`npm run service shortcut` installs `~/Applications/Job Hunter.app` - a plist, a shell script and an
+icns rendered from `templates/icon.svg`. The launcher starts the service if it is down and waits for
+the port before opening a browser, so it works on a fresh boot rather than opening onto nothing.
+Verified from a fully stopped state: 9 seconds.
+
+`http://jobhunter.localhost:4321` also works, with no hosts-file change - browsers resolve any
+`*.localhost` name to 127.0.0.1.
+
 # One click builds the whole packet
 
 `apply.mjs full --job=N` runs init, render with the PDF, and both deck exports as ONE process, so

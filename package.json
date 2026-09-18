@@ -35,6 +35,7 @@
     "demo": "node --no-warnings=ExperimentalWarning src/web/demo/build.mjs",
     "service": "node --no-warnings=ExperimentalWarning src/service.mjs",
     "adjudicate": "node --no-warnings=ExperimentalWarning src/jobs/adjudicate.mjs",
-    "daily": "node --no-warnings=ExperimentalWarning src/jobs/daily.mjs"
+    "daily": "node --no-warnings=ExperimentalWarning src/jobs/daily.mjs",
+    "open": "node --no-warnings=ExperimentalWarning src/service.mjs open"
   }
 }

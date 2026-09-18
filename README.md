@@ -113,8 +113,10 @@ Node 22+ and Google Chrome (which renders the PDFs). Nothing to install. Full wa
 ### Keeping it running
 
 ```bash
+npm run service shortcut                # a "Job Hunter" app in Spotlight and the Dock
+npm run open                            # or just open it from a terminal
 npm run service install                 # dashboard: starts now, and at every login
-npm run service schedule --at=07:00     # collect every day (measured: ~2 hours a run)
+npm run service schedule --at=07:00     # collect every day (~2 minutes a run)
 npm run service hunt-now                # run one immediately
 npm run service status                  # both agents, and when the last collection ran
 npm run service restart / logs / unschedule / uninstall
