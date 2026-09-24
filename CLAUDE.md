@@ -396,6 +396,16 @@ covered every six runs. A daily crawler does not need to re-search every phrase 
 anything genuinely new still surfaces within a week. `--deep` runs all of them at full depth and
 will probably earn another ban; it is for a deliberate one-off.
 
+## One run at a time, enforced by the server
+
+The page has a `running` flag. It stops a second click in the same tab and nothing else: a refresh,
+a second tab, or a reopened window each start another run. Tested by firing three requests at once
+- three hunts spawned, which is exactly how 1,608 requests happened in twelve minutes.
+
+`activeRun` in `src/web/server.mjs` is the actual lock, because what is being guarded is not the
+browser's state but other people's job boards. A refused request still answers as a stream, or the
+page reads an empty body as a run that finished instantly with no output.
+
 ## A silent parallel wait reads as a hang
 
 The sources are fetched in parallel and reported in order, so the first line can appear in a second

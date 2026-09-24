@@ -366,11 +366,24 @@ const RUNNABLE = {
   scout:    ['src/scout.mjs'],
 };
 
-function stream(res, args) {
+// Which pipeline run is in flight, if any. Module-level because it guards a machine-wide resource:
+// other people's job boards.
+let activeRun = null;
+
+function stream(res, args, refuse = null, onExit = null) {
   res.writeHead(200, {
     'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive',
   });
   const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  // Refusing still has to answer in the protocol the caller expects, or the page reads an empty
+  // body as a run that finished instantly with no output.
+  if (refuse) {
+    refuse.split('\n').forEach((l) => send('line', l));
+    send('done', { code: 1 });
+    return res.end();
+  }
+
   const child = spawn(process.execPath, ['--no-warnings=ExperimentalWarning', ...args], { cwd: ROOT });
 
   let buf = '';
@@ -382,8 +395,8 @@ function stream(res, args) {
   };
   child.stdout.on('data', pump);
   child.stderr.on('data', pump);
-  child.on('close', (code) => { if (buf) send('line', buf); send('done', { code }); res.end(); });
-  child.on('error', (e) => { send('line', `ERROR ${e.message}`); send('done', { code: 1 }); res.end(); });
+  child.on('close', (code) => { if (buf) send('line', buf); send('done', { code }); res.end(); onExit?.(); });
+  child.on('error', (e) => { send('line', `ERROR ${e.message}`); send('done', { code: 1 }); res.end(); onExit?.(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -678,7 +691,20 @@ const server = createServer(async (req, res) => {
     if (p.startsWith('/api/run/') && req.method === 'POST') {
       const what = p.split('/')[3];
       if (!RUNNABLE[what]) return json(res, { error: 'unknown task' }, 400);
-      return stream(res, RUNNABLE[what]);
+
+      // One pipeline run at a time, enforced here rather than in the browser.
+      //
+      // The page had a `running` flag, which stops a second click in the same tab and nothing else:
+      // a refresh, a second tab, or a reopened window all start another. Three requests arriving
+      // together really did spawn three hunts, and three hunts in twelve minutes is what got the
+      // Workable IP banned for a week. A flag in one tab is not a lock.
+      if (activeRun) {
+        return stream(res, null, `Already running "${activeRun.what}", started ${Math.round((Date.now() - activeRun.at) / 1000)}s ago.\n`
+          + 'Only one collection runs at a time, on purpose: several at once is what got this IP\n'
+          + 'rate-limited by Workable for a week. Watch the one in progress, or wait for it.');
+      }
+      activeRun = { what, at: Date.now() };
+      return stream(res, RUNNABLE[what], null, () => { activeRun = null; });
     }
 
     if (req.method === 'POST') {
