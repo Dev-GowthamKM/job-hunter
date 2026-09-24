@@ -276,13 +276,25 @@ function jobDetail(id) {
   const app = D.prepare('SELECT * FROM applications WHERE job_id = ? ORDER BY id DESC LIMIT 1').get(job.id);
   const dir = join(DATA, 'applications', String(job.id));
   const file = (f) => (existsSync(join(dir, f)) ? f : null);
-  const resumePdf = app?.resume_path ? app.resume_path.split('/').pop() : null;
+  // The PDF renders on first request, so "not on disk" is not the same as "not available".
+  //
+  // This reported null whenever the file was absent, the drawer rendered "not built yet" with no
+  // link, and there was no way to trigger the render the server would happily have done. Eleven of
+  // seventy-five packets looked like they had no resume at all. They all had one; nobody had asked
+  // for it yet.
+  const resumeName = app?.resume_path ? app.resume_path.split('/').pop() : null;
+  const canRender = resumeName && existsSync(join(dir, 'resume.json'));
+  const pdfOnDisk = resumeName && existsSync(join(dir, resumeName));
+  const resumePdf = canRender ? resumeName : null;
   return {
     job: { ...job, payLabel: pay(job), content_len: (job.content || '').length },
     application: app || null,
     packet: app ? {
       research: file('research.md'),
-      resumePdf: resumePdf && existsSync(join(dir, resumePdf)) ? resumePdf : null,
+      resumePdf,
+      // True when it is already rendered; false means the first open spends about 80 seconds in
+      // Chrome. The UI says so rather than looking frozen.
+      pdfReady: !!pdfOnDisk,
       resumeJson: file('resume.json'),
       loomScript: file('loom/script.md'),
       loomSlides: file('loom/slides.html'),

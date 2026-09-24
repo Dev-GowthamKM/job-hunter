@@ -975,7 +975,11 @@ async function openJob(id, { apply = false } = {}) {
     <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:20px 0 4px">Packet</h3>
     <div class="files">
       ${f('Research dossier', 'research.md', pk?.research)}
-      ${f('Tailored resume (PDF)', pk?.resumePdf || 'x', pk?.resumePdf)}
+      ${pk?.resumePdf
+        ? `<a class="file" href="/packet/${id}/${encodeURIComponent(pk.resumePdf)}" target="_blank">
+             <span>Tailored resume (PDF)</span>
+             <span>${pk.pdfReady ? 'open →' : 'render it · ~80s'}</span></a>`
+        : `<div class="file"><span class="miss">Tailored resume (PDF)</span><span class="miss">not built yet</span></div>`}
       ${f('Loom script', 'loom/script.md', pk?.loomScript)}
       ${f('Loom slides', 'loom/slides.html', pk?.loomSlides)}
       ${pk?.loomSlides ? `<div class="file" style="gap:8px;flex-wrap:wrap">

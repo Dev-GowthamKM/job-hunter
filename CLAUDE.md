@@ -237,6 +237,17 @@ the dashboard can stream it. Measured at about 125 seconds, nearly all of it Chr
 hour over sixty packets. It is the wrong default for one job the owner has just decided they care
 about, and the Build packet button now uses `full`.
 
+# "Not on disk" is not "not available"
+
+The resume PDF renders on first request, by design - Chrome costs 80 seconds and `batch` would
+spend an hour on sixty packets. But `jobDetail()` reported `resumePdf: null` whenever the file was
+absent, so the drawer printed **"not built yet"** with no link, and there was no way to ask for the
+render the server would happily have done. Eleven of seventy-five packets looked like they had no
+resume. All of them had one; nobody had requested it.
+
+It now reports the filename whenever `resume.json` exists, with `pdfReady` saying whether it is
+already rendered, and the drawer labels the link `render it · ~80s` rather than looking frozen.
+
 # Applying is the middle of the story
 
 `applications` carries `outcome` (rejected | interview | offer | ghosted), `outcome_at` and
