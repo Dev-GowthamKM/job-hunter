@@ -367,8 +367,40 @@ wrong, and only the first was the one I introduced:
   single error; the same collapse on a company board would have retired thousands of live jobs.
   A source that sees under half of what is already held now retires nothing.
 
-Workable concurrency is **2**, which is measurably faster than sequential and stayed under the
-limit. The number is empirical. Raise it only with evidence.
+Workable concurrency is **2**. That was not enough, and the rest of this section is what it cost.
+
+## The system was re-triggering its own ban for six days
+
+Every 429 carries a 24-hour `retry-after`. Every run asked again anyway, and every ask returned a
+**fresh** 24 hours - so the ban never got a chance to expire. Workable, the largest source in the
+pipeline, was down from 17 to 24 September and the only symptom was one red line in the log.
+
+`workable:blocked-until` in the `state` table now holds the deadline, and `collect()` throws before
+making a single request while it stands. A clean run clears it.
+
+## It is a volume problem, not a concurrency problem
+
+Measured, in this order:
+
+| requests per run | result |
+|---|---|
+| 536 (67 titles x 8 pages) | banned for a week |
+| 268 (67 titles x 4 pages) | banned again inside one run |
+| 48 (12 titles x 4 pages) | fine |
+
+Three runs in twelve minutes one morning made **1,608 requests**. No amount of concurrency tuning
+fixes that.
+
+The searches **rotate**: twelve title phrases a run, the offset advancing each time, so all 67 are
+covered every six runs. A daily crawler does not need to re-search every phrase every day, and
+anything genuinely new still surfaces within a week. `--deep` runs all of them at full depth and
+will probably earn another ban; it is for a deliberate one-off.
+
+## A silent parallel wait reads as a hang
+
+The sources are fetched in parallel and reported in order, so the first line can appear in a second
+while the next takes a minute. The owner reasonably read that gap as a stuck run. The hunt now says
+`waiting on N sources in parallel` before the silence starts.
 
 # launchd's ProcessType decides how fast the dashboard is
 

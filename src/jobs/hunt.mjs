@@ -204,6 +204,14 @@ async function main() {
       .then((mod) => mod.collect(cfg, {}))
       .then((jobs) => ({ name, jobs }), (error) => ({ name, error })));
 
+  // Say that the wait is expected.
+  //
+  // The sources are fetched in parallel but reported in order, and the first one can finish in a
+  // second while the slowest takes a minute. That leaves a long silence after the first line with
+  // nothing on screen to say anything is happening - which reads as a hang. It is not; it is six
+  // other boards still answering.
+  console.log(`  waiting on ${globalNames.length} sources in parallel — they report in order as they finish`);
+
   for (const pending of started) {
     const { name, jobs, error } = await pending;
     if (error) {
