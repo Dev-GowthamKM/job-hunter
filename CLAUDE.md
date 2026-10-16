@@ -269,6 +269,22 @@ show an age, and the post-run summary opens straight onto the last 24 hours.
 Filtering happens in SQL rather than the browser so it survives paging, and it coalesces to
 `discovered_at` - a posting with no date from the board is not evidence of age.
 
+# Search is FTS5, rebuilt after each crawl
+
+A LIKE over `content` costs about a second on 10,000 rows - each carries up to 20KB of description
+and a leading wildcard cannot be indexed. `jobs_fts` is an external-content FTS5 table, so it stores
+the index and reads the text back out of `jobs` rather than keeping a second copy. Queries answer in
+4-12ms.
+
+**Rebuilt, not trigger-maintained.** Triggers would fire on each of ~12,000 upserts a run; the
+rebuild takes six seconds against a crawl that takes thirty, and the index cannot drift out of sync.
+Verified after three weeks of daily runs: 10,056 jobs, 10,056 indexed.
+
+`ftsQuery()` quotes and ANDs each term, and prefix-matches only terms with **three or more
+characters after tokenising**. unicode61 reduces `c++` to `c`, and `"c++"*` became `c*` which
+matched 7,173 of 7,177 postings - every word starting with the letter c. Measuring the raw string
+is not enough; measure what the tokenizer will see.
+
 # An empty panel is a lie
 
 `show()` called each tab's async loader without awaiting it and without a `.catch`, so any throw

@@ -15,7 +15,7 @@
 //   node src/jobs/hunt.mjs --verify-companies
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db, retireMissing } from '../db.mjs';
+import { CONFIG, ROOT, upsertJob, setJobVerdict, logEvent, isSuppressed, db, retireMissing, rebuildSearchIndex } from '../db.mjs';
 import { screen, roleRelevant, tierOf, fmt } from './eligibility.mjs';
 import { enabledTracks } from './tracks.mjs';
 
@@ -300,6 +300,9 @@ async function main() {
   }
 
   if (!dryRun) {
+    // Keep search in step with the crawl. Rebuilding beats triggers here: triggers would fire on
+    // each of ~12,000 upserts, and this takes about six seconds against a run that takes thirty.
+    try { rebuildSearchIndex(); } catch (e) { console.log(`  search index: ${e.message}`); }
     logEvent('hunt_run', { ...tally, byTrack });
     console.log(`\nNext: node src/jobs/report.mjs           what is worth your time`);
     console.log(`      node src/jobs/report.mjs --near-miss  what the filter threw away, and why`);

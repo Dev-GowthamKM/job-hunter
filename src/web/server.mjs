@@ -14,7 +14,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { spawn } from 'node:child_process';
-import { CONFIG, DATA, ROOT, db, now, logEvent, setJobHidden } from '../db.mjs';
+import { CONFIG, DATA, ROOT, db, now, logEvent, setJobHidden, ftsQuery } from '../db.mjs';
 import { fmt } from '../jobs/eligibility.mjs';
 import { authenticate, createUser, startSession, userForToken, endSession, pruneSessions, tooManyAttempts, recordAttempt, clearAttempts } from '../auth.mjs';
 import { profileFor, saveProfile, profileReadiness } from '../profile.mjs';
@@ -154,6 +154,24 @@ function jobList(q) {
   if (q.tier) { where.push(`tier IN (${q.tier.split(',').map(() => '?').join(',')})`); args.push(...q.tier.split(',')); }
   if (q.status) { where.push('status = ?'); args.push(q.status); }
   if (q.company) { where.push('company LIKE ?'); args.push(`%${q.company}%`); }
+
+  // Free text over title, company, location and the full description.
+  //
+  // The only text control used to be a company name, which is the one thing you already know when
+  // you are looking for "anything mentioning Postgres". A LIKE over content costs about a second
+  // on 7,000 rows; the FTS index answers in single-digit milliseconds.
+  if (q.q) {
+    const m = ftsQuery(q.q);
+    if (m) { where.push('id IN (SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH ?)'); args.push(m); }
+  }
+
+  // Facets that were in the data and nowhere on the page.
+  if (q.source) { where.push(`source IN (${q.source.split(',').map(() => '?').join(',')})`); args.push(...q.source.split(',')); }
+  if (q.scope) { where.push(`remote_scope IN (${q.scope.split(',').map(() => '?').join(',')})`); args.push(...q.scope.split(',')); }
+  if (q.packet === '1') where.push('EXISTS (SELECT 1 FROM applications a WHERE a.job_id = jobs.id)');
+  if (q.packet === '0') where.push('NOT EXISTS (SELECT 1 FROM applications a WHERE a.job_id = jobs.id)');
+  // A posting the board published in full, rather than an aggregator's blurb.
+  if (q.full === '1') where.push("LENGTH(COALESCE(content,'')) >= 1200");
   if (q.track) { where.push(`track IN (${q.track.split(',').map(() => '?').join(',')})`); args.push(...q.track.split(',')); }
 
   // Freshness, in hours. A role posted this morning has a handful of applicants; the same role
@@ -602,6 +620,13 @@ const server = createServer(async (req, res) => {
       const { applyPack } = await import('../jobs/autofill.mjs');
       const pack = applyPack(p.split('/')[3]);
       return pack ? json(res, pack) : json(res, { error: 'not found' }, 404);
+    }
+    // The facet values, straight from the data, so the UI never offers a filter that matches nothing.
+    if (p === '/api/facets') {
+      return json(res, {
+        sources: D.prepare('SELECT source AS key, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY source ORDER BY n DESC').all(),
+        scopes: D.prepare("SELECT COALESCE(remote_scope,'unknown') AS key, COUNT(*) n FROM jobs WHERE hidden=0 GROUP BY remote_scope ORDER BY n DESC").all(),
+      });
     }
     if (p === '/api/deeplinks') return json(res, deepLinks());
     // In shared mode every one of these reads the ASKING user's profile. The gate alone was not

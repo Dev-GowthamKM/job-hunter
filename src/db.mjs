@@ -506,6 +506,49 @@ export function setJobVerdict(id, { eligibility, reason, layer, status, score = 
 
 /** Dismiss a job from the dashboard, or bring it back. */
 /**
+ * Full-text search over the postings.
+ *
+ * A LIKE over `content` takes about a second on 7,000 rows, because each one carries up to 20KB of
+ * job description and there is no way to index a leading wildcard. FTS5 ships with node:sqlite, so
+ * the index is free; this is an external-content table, meaning it stores only the index and reads
+ * the text back out of `jobs` rather than keeping a second copy of every description.
+ *
+ * Rebuilt rather than trigger-maintained. Triggers would fire on every one of the ~12,000 upserts a
+ * run makes, and the rebuild takes a few seconds against a crawl that takes thirty - simpler, and
+ * there is no way for the index to drift out of sync with the table.
+ */
+export function rebuildSearchIndex() {
+  const d = db();
+  d.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(
+            title, company, location_raw, content,
+            content='jobs', content_rowid='id', tokenize='porter unicode61')`);
+  d.exec("INSERT INTO jobs_fts(jobs_fts) VALUES('rebuild')");
+  return d.prepare('SELECT COUNT(*) n FROM jobs_fts').get().n;
+}
+
+/**
+ * Turn what a person typed into something FTS5 will accept.
+ *
+ * Users type `react node` meaning both, and `c++` or `node.js` meaning those literally - all of
+ * which are syntax errors or silent mis-parses in FTS5's query language. Every term is quoted and
+ * ANDed, and a trailing `*` is kept so "kuber" still finds Kubernetes.
+ */
+export function ftsQuery(raw) {
+  const terms = String(raw || '').match(/[\p{L}\p{N}][\p{L}\p{N}.+#_-]*/gu) || [];
+  if (!terms.length) return null;
+  return terms.map((t) => {
+    const clean = t.replace(/"/g, '');
+    // Prefix-match only terms long enough to narrow anything, measured on what the TOKENIZER will
+    // see rather than what was typed. "c++" is three characters and one token: unicode61 drops the
+    // plus signs, so `"c++"*` becomes `c*` and matched 7,173 of 7,177 postings - every word
+    // starting with the letter c. Short terms match whole tokens instead, which is the most the
+    // tokenizer can honestly offer them.
+    const tokenised = clean.replace(/[^\p{L}\p{N}]/gu, '');
+    return tokenised.length >= 3 ? `"${clean}"*` : `"${clean}"`;
+  }).join(' AND ');
+}
+
+/**
  * Retire postings that have vanished from the board that published them.
  *
  * Only for sources that return a COMPLETE board - Greenhouse, Lever, Ashby. For those, a posting
