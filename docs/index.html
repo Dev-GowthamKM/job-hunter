@@ -249,6 +249,67 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 .out { font-size:12.5px; }
 .d2,.d3,.d4,.d5 { color:var(--muted); }
 
+/* ── motion ──────────────────────────────────────────────
+   Everything here is either feedback (something responded to you) or orientation (where a thing
+   came from). Nothing moves for decoration, and nothing moves for longer than about a fifth of a
+   second, because a list you re-filter twenty times is a list you cannot wait for.
+   One duration scale, so the whole page feels like one object. */
+:root { --t-fast:.12s; --t: .19s; --ease:cubic-bezier(.22,.7,.3,1); }
+
+/* Rows arrive in sequence rather than all at once, which makes a filter change read as a redraw
+   instead of a flicker. Capped at twelve, or the last row of sixty waits a second and a half. */
+@keyframes rowIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+#jobs-list .job { animation:rowIn var(--t) var(--ease) backwards; }
+#jobs-list .job:nth-child(1){animation-delay:0ms}    #jobs-list .job:nth-child(2){animation-delay:18ms}
+#jobs-list .job:nth-child(3){animation-delay:36ms}   #jobs-list .job:nth-child(4){animation-delay:54ms}
+#jobs-list .job:nth-child(5){animation-delay:72ms}   #jobs-list .job:nth-child(6){animation-delay:90ms}
+#jobs-list .job:nth-child(7){animation-delay:108ms}  #jobs-list .job:nth-child(8){animation-delay:126ms}
+#jobs-list .job:nth-child(9){animation-delay:144ms}  #jobs-list .job:nth-child(10){animation-delay:162ms}
+#jobs-list .job:nth-child(11){animation-delay:180ms} #jobs-list .job:nth-child(12){animation-delay:198ms}
+
+.job, .card, .act, .tag, .file, nav button, select, input { transition:
+  background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+  color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease),
+  box-shadow var(--t) var(--ease); }
+.job:hover { transform:translateX(2px); border-color:var(--line-2); }
+.act:hover { transform:translateY(-1px); }
+.act:active { transform:translateY(0); }
+.file:hover { transform:translateX(2px); }
+
+/* The drawer slides from the edge it lives on, so it is obvious where it went when it closes. */
+@keyframes drawerIn { from { transform:translateX(26px); opacity:0; } to { transform:none; opacity:1; } }
+@keyframes scrimIn { from { opacity:0; } to { opacity:1; } }
+.drawer { animation:drawerIn var(--t) var(--ease); }
+.scrim { animation:scrimIn var(--t) var(--ease); }
+
+/* A bar that animates its own width turns "still working" into something you can see. */
+#progress-bar { transition:width .45s var(--ease); }
+
+/* Focus you can actually find, on a page that is mostly dark panels. */
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+
+/* Someone who has asked their operating system to stop animations has asked this page too. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.001ms !important; }
+}
+
+/* ── search bar ──────────────────────────────────────── */
+.searchbar { position:relative; margin-bottom:12px; }
+.searchbar input {
+  width:100%; padding:13px 16px; font-size:14.5px;
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--r); color:var(--ink);
+}
+.searchbar input:focus { border-color:var(--accent); background:var(--panel-2); }
+.searchbar input::placeholder { color:var(--dim); }
+.searchbar-hint {
+  position:absolute; right:14px; top:50%; transform:translateY(-50%);
+  font-size:12px; color:var(--muted); pointer-events:none;
+}
+.chk { display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted); white-space:nowrap; }
+
 @media (max-width:860px){
   body { flex-direction:column; height:auto; overflow:visible; }
   main { overflow:visible; padding:20px 16px 56px; }
@@ -339,9 +400,9 @@ const DEMO = {
      }
     ]
    },
-   "companies": 77,
+   "companies": 78,
    "lastRun": {
-    "at": "2026-09-18T07:49:35.459Z",
+    "at": "2026-10-17T06:26:18.312Z",
     "detail": {
      "found": 14,
      "sources": 1,
@@ -354,11 +415,8 @@ const DEMO = {
     "max": 150000
    },
    "money": {
-    "month": "2026-09",
-    "allocated": 3000,
-    "spent": 1433,
-    "left": 1567,
-    "currency": "EUR"
+    "month": "2026-10",
+    "allocated": null
    },
    "pendingApproval": 3,
    "applications": {
@@ -1288,10 +1346,10 @@ const DEMO = {
    "spent": 1433,
    "left": 1567,
    "closed": false,
-   "daysLeft": 12,
+   "daysLeft": 0,
    "daysInMonth": 30,
-   "perDay": 130.58333333333334,
-   "projected": 2388.3333333333335,
+   "perDay": null,
+   "projected": 1433,
    "envelopes": [
     {
      "name": "invest",
@@ -1334,35 +1392,35 @@ const DEMO = {
    "recent": [
     {
      "id": 5,
-     "at": "2026-09-18T07:49:35.375Z",
+     "at": "2026-10-17T06:26:18.295Z",
      "envelope": "transport",
      "amount": 61,
      "note": "metro pass"
     },
     {
      "id": 4,
-     "at": "2026-09-18T07:49:35.375Z",
+     "at": "2026-10-17T06:26:18.295Z",
      "envelope": "tools",
      "amount": 20,
      "note": "domain renewal"
     },
     {
      "id": 3,
-     "at": "2026-09-18T07:49:35.375Z",
+     "at": "2026-10-17T06:26:18.295Z",
      "envelope": "food",
      "amount": 38,
      "note": "coffee, week 2"
     },
     {
      "id": 2,
-     "at": "2026-09-18T07:49:35.375Z",
+     "at": "2026-10-17T06:26:18.295Z",
      "envelope": "food",
      "amount": 214,
      "note": "groceries"
     },
     {
      "id": 1,
-     "at": "2026-09-18T07:49:35.375Z",
+     "at": "2026-10-17T06:26:18.295Z",
      "envelope": "rent",
      "amount": 1100,
      "note": "September rent"
@@ -1390,11 +1448,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-17T07:49:35.380Z",
+    "posted_at": "2026-10-16T06:26:18.299Z",
     "content": "We are a fully distributed team of 40 building developer tooling.\n\nWe hire anywhere in the world and have no headquarters. Contract of Employment is issued through our\nemployer of record in your country.\n\nWhat you will do\n- Own features end to end in TypeScript, React and Node.js\n- Design PostgreSQL schemas and the APIs on top of them\n- Share the on-call rotation with six other engineers\n\nRequirements\n- 2+ years shipping production web applications\n- Strong JavaScript and TypeScript\n- Comfortable with SQL and query performance\n- Docker, and enough CI to keep a pipeline green\n\nNice to have\n- Experience with retrieval-augmented generation\n- Open source contributions\n\nCompensation: $85,000 - $115,000 depending on location and experience.\nNew hire equity: $10,000 - $20,000 vesting over four years.",
     "raw_json": null,
-    "discovered_at": "2026-09-18T07:49:35.375Z",
-    "updated_at": "2026-09-18T07:54:09.984Z",
+    "discovered_at": "2026-10-17T06:26:18.295Z",
+    "updated_at": "2026-10-17T06:29:53.684Z",
     "status": "tailored",
     "score": 91,
     "eligibility": "yes",
@@ -1420,7 +1478,7 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/1/loom/slides.html",
     "ats_coverage": 47,
     "status": "awaiting_approval",
-    "created_at": "2026-09-18T07:49:36.043Z",
+    "created_at": "2026-10-17T06:26:18.517Z",
     "approved_at": null,
     "applied_at": null,
     "outcome": null,
@@ -1432,6 +1490,7 @@ const DEMO = {
    "packet": {
     "research": "research.md",
     "resumePdf": "Northwind_Labs_Alex_Rivera.pdf",
+    "pdfReady": true,
     "resumeJson": "resume.json",
     "loomScript": "loom/script.md",
     "loomSlides": "loom/slides.html",
@@ -1458,11 +1517,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-16T07:49:35.383Z",
+    "posted_at": "2026-10-15T06:26:18.300Z",
     "content": "Tessellate builds retrieval infrastructure for regulated industries.\n\nThis role is open to candidates anywhere in the world. We have teammates in 14 countries.\n\nYou will\n- Build and evaluate RAG pipelines against real customer corpora\n- Own prompt design and the evaluation harness that keeps it honest\n- Work directly with the two founders on what ships next\n\nWe are looking for\n- 2+ years of software engineering, any stack\n- Hands-on work with an LLM API in production, not just a demo\n- Python or TypeScript\n- Vector search: pgvector, Qdrant, or similar\n\nBase salary $95,000 - $130,000. Wellness stipend $1,200 per year.",
     "raw_json": null,
-    "discovered_at": "2026-09-18T07:49:35.375Z",
-    "updated_at": "2026-09-18T07:57:28.782Z",
+    "discovered_at": "2026-10-17T06:26:18.295Z",
+    "updated_at": "2026-10-17T06:30:53.095Z",
     "status": "tailored",
     "score": 88,
     "eligibility": "yes",
@@ -1488,7 +1547,7 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/2/loom/slides.html",
     "ats_coverage": 13,
     "status": "awaiting_approval",
-    "created_at": "2026-09-18T07:54:29.099Z",
+    "created_at": "2026-10-17T06:30:08.892Z",
     "approved_at": null,
     "applied_at": null,
     "outcome": null,
@@ -1500,6 +1559,7 @@ const DEMO = {
    "packet": {
     "research": "research.md",
     "resumePdf": "Tessellate_Alex_Rivera.pdf",
+    "pdfReady": true,
     "resumeJson": "resume.json",
     "loomScript": "loom/script.md",
     "loomSlides": "loom/slides.html",
@@ -1526,11 +1586,11 @@ const DEMO = {
     "salary_currency": "USD",
     "salary_period": "year",
     "salary_source": "parsed",
-    "posted_at": "2026-09-15T07:49:35.383Z",
+    "posted_at": "2026-10-14T06:26:18.301Z",
     "content": "Broadfin is a payments company serving 90,000 small businesses.\n\nWe are remote-first and hire globally, with no location requirement.\n\nThe work\n- React and TypeScript across our merchant dashboard\n- Design system ownership alongside two designers\n- Accessibility to WCAG 2.2 AA, which we treat as a requirement and not a nice to have\n\nYou should have\n- 2+ years of frontend work in a component framework\n- Real CSS skill, not just utility classes\n- An eye for performance budgets\n\n$78,000 - $96,000 plus equity.",
     "raw_json": null,
-    "discovered_at": "2026-09-18T07:49:35.375Z",
-    "updated_at": "2026-09-18T08:00:04.636Z",
+    "discovered_at": "2026-10-17T06:26:18.295Z",
+    "updated_at": "2026-10-17T06:31:50.070Z",
     "status": "tailored",
     "score": 84,
     "eligibility": "yes",
@@ -1556,7 +1616,7 @@ const DEMO = {
     "loom_slides_path": "/Users/sachin2000/Agent_Money_Maker/.demo/data/applications/3/loom/slides.html",
     "ats_coverage": 13,
     "status": "awaiting_approval",
-    "created_at": "2026-09-18T07:58:04.793Z",
+    "created_at": "2026-10-17T06:31:00.950Z",
     "approved_at": null,
     "applied_at": null,
     "outcome": null,
@@ -1568,6 +1628,7 @@ const DEMO = {
    "packet": {
     "research": "research.md",
     "resumePdf": "Broadfin_Alex_Rivera.pdf",
+    "pdfReady": true,
     "resumeJson": "resume.json",
     "loomScript": "loom/script.md",
     "loomSlides": "loom/slides.html",
@@ -1593,7 +1654,7 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"We hire anywhere in the world and have no headquarters.\"",
-   "posted_at": "2026-09-17T07:49:35.380Z",
+   "posted_at": "2026-10-16T06:26:18.299Z",
    "source": "demo",
    "track": "dev",
    "tier": "match",
@@ -1621,7 +1682,7 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"This role is open to candidates anywhere in the world.\"",
-   "posted_at": "2026-09-16T07:49:35.383Z",
+   "posted_at": "2026-10-15T06:26:18.300Z",
    "source": "demo",
    "track": "ai",
    "tier": "match",
@@ -1649,7 +1710,7 @@ const DEMO = {
    "status": "tailored",
    "eligibility": "yes",
    "eligibility_reason": "Posting says \"we are remote-first and hire globally, with no location requirement.\"",
-   "posted_at": "2026-09-15T07:49:35.383Z",
+   "posted_at": "2026-10-14T06:26:18.301Z",
    "source": "demo",
    "track": "dev",
    "tier": "match",
@@ -1677,7 +1738,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Wants 6+ years; the fact bank evidences two. Pay also tops out above the band.",
-   "posted_at": "2026-09-14T07:49:35.385Z",
+   "posted_at": "2026-10-13T06:26:18.302Z",
    "source": "demo",
    "track": "dev",
    "tier": "stretch",
@@ -1705,7 +1766,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Work from anywhere and the right level, but the posting publishes no salary.",
-   "posted_at": "2026-09-13T07:49:35.387Z",
+   "posted_at": "2026-10-12T06:26:18.303Z",
    "source": "demo",
    "track": "ai",
    "tier": "stretch",
@@ -1733,7 +1794,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "unclear",
    "eligibility_reason": "Genuinely worldwide, but the fact bank has no shipped game to point at.",
-   "posted_at": "2026-09-12T07:49:35.409Z",
+   "posted_at": "2026-10-11T06:26:18.303Z",
    "source": "demo",
    "track": "game",
    "tier": "stretch",
@@ -1761,7 +1822,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Wants 5+ years of paid media. The fact bank has none, and doNotClaim says so explicitly.",
-   "posted_at": "2026-09-04T07:49:35.455Z",
+   "posted_at": "2026-10-03T06:26:18.311Z",
    "source": "demo",
    "track": "marketing",
    "tier": "no",
@@ -1789,7 +1850,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Posting says \"unpaid internship, 12 weeks, for course credit\".",
-   "posted_at": "2026-09-05T07:49:35.445Z",
+   "posted_at": "2026-10-04T06:26:18.310Z",
    "source": "demo",
    "track": "game",
    "tier": "no",
@@ -1817,7 +1878,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Posting says \"six month fixed-term contract, no extension planned\". Not full-time.",
-   "posted_at": "2026-09-06T07:49:35.442Z",
+   "posted_at": "2026-10-05T06:26:18.309Z",
    "source": "demo",
    "track": "dev",
    "tier": "no",
@@ -1845,7 +1906,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote — EU timezones\", which is a region and not everywhere.",
-   "posted_at": "2026-09-07T07:49:35.439Z",
+   "posted_at": "2026-10-06T06:26:18.309Z",
    "source": "demo",
    "track": "ai",
    "tier": "regional",
@@ -1873,7 +1934,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Tokyo (hybrid)\" — two days a week in the office.",
-   "posted_at": "2026-09-08T07:49:35.434Z",
+   "posted_at": "2026-10-07T06:26:18.308Z",
    "source": "demo",
    "track": "dev",
    "tier": "regional",
@@ -1901,7 +1962,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote (New Zealand)\".",
-   "posted_at": "2026-09-09T07:49:35.432Z",
+   "posted_at": "2026-10-08T06:26:18.307Z",
    "source": "demo",
    "track": "marketing",
    "tier": "regional",
@@ -1929,7 +1990,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote — Germany\".",
-   "posted_at": "2026-09-10T07:49:35.430Z",
+   "posted_at": "2026-10-09T06:26:18.305Z",
    "source": "demo",
    "track": "marketing",
    "tier": "regional",
@@ -1957,7 +2018,7 @@ const DEMO = {
    "status": "rejected",
    "eligibility": "no",
    "eligibility_reason": "Location field says \"Remote (United States)\". A stated place is a restriction.",
-   "posted_at": "2026-09-11T07:49:35.424Z",
+   "posted_at": "2026-10-10T06:26:18.304Z",
    "source": "demo",
    "track": "dev",
    "tier": "regional",
@@ -2186,14 +2247,32 @@ body { padding-top: 36px; box-sizing: border-box; }
           <option value="72">Posted in 3 days</option>
           <option value="168">Posted this week</option>
         </select>
-        <input id="f-company" placeholder="Company" style="width:140px">
       </div>
     </header>
+
+    <div class="searchbar">
+      <input id="f-q" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Search every posting — postgres, media buyer, remote-first…">
+      <span class="searchbar-hint" id="f-q-hint"></span>
+    </div>
 
     <div class="card" style="margin-bottom:12px">
       <div id="tier-chips" style="margin-bottom:14px"></div>
       <div id="tier-why" class="note" style="margin-bottom:14px"></div>
       <div class="row" id="track-chips" style="margin-bottom:12px"></div>
+      <div class="row" style="gap:10px;margin-bottom:12px">
+        <input id="f-company" placeholder="Company" style="width:150px">
+        <select id="f-source" title="Which board it came from"><option value="">Any board</option></select>
+        <select id="f-scope" title="What the posting says about location"><option value="">Any location type</option></select>
+        <select id="f-packet" title="Whether a packet has been built">
+          <option value="">Packet: any</option>
+          <option value="1">Packet built</option>
+          <option value="0">No packet yet</option>
+        </select>
+        <label class="chk" title="Aggregators publish a short blurb rather than the posting">
+          <input id="f-full" type="checkbox"> full description only
+        </label>
+      </div>
       <div class="row" style="gap:14px;align-items:flex-end">
         <label class="f">Min salary (USD/yr)<input id="f-smin" type="number" placeholder="any" style="width:118px"></label>
         <label class="f">Max salary<input id="f-smax" type="number" placeholder="any" style="width:118px"></label>
@@ -2565,6 +2644,11 @@ function filters() {
   if (!$('#f-unknown').checked) p.set('unknownSalary', '0');
   if ($('#f-hidden').checked) p.set('hidden', '1');
   const within = $('#f-within')?.value; if (within) p.set('within', within);
+  const text = $('#f-q')?.value.trim(); if (text) p.set('q', text);
+  const src = $('#f-source')?.value; if (src) p.set('source', src);
+  const scope = $('#f-scope')?.value; if (scope) p.set('scope', scope);
+  const pkt = $('#f-packet')?.value; if (pkt) p.set('packet', pkt);
+  if ($('#f-full')?.checked) p.set('full', '1');
   p.set('sort', $('#f-sort').value);
   return p;
 }
@@ -2634,6 +2718,10 @@ async function loadJobs(append = false) {
   }
 
   $('#jobs-sub').textContent = `${r.total} match your filters`;
+  const hint = $('#f-q-hint');
+  if (hint) hint.textContent = $('#f-q')?.value.trim()
+    ? `${nfmt(r.total)} posting${r.total === 1 ? '' : 's'} mention that`
+    : '';
   const html = r.rows.map((j) => `
     <div class="job" data-id="${j.id}">
       <div class="score">${j.score ?? '–'}</div>
@@ -2669,7 +2757,29 @@ async function loadJobs(append = false) {
   jobOffset += r.rows.length;
   $('#more').hidden = jobOffset >= r.total;
 }
-LOAD.jobs = async () => { await renderTiers(); await loadJobs(false); };
+/**
+ * Fill the board and location-type menus from what is actually in the database.
+ *
+ * Hardcoding them would mean offering "lever" long after that board went quiet, and silently
+ * missing a source added later. The counts come along so a menu entry says how much is behind it.
+ */
+let facetsLoaded = false;
+async function loadFacets() {
+  if (facetsLoaded) return;
+  const f = await api('/api/facets').catch(() => null);
+  if (!f) return;
+  facetsLoaded = true;
+  const fill = (sel, rows, label) => {
+    const el = $(sel); if (!el) return;
+    el.innerHTML = `<option value="">${label}</option>` + rows
+      .filter((r) => r.key)
+      .map((r) => `<option value="${esc(r.key)}">${esc(r.key)} (${nfmt(r.n)})</option>`).join('');
+  };
+  fill('#f-source', f.sources || [], 'Any board');
+  fill('#f-scope', f.scopes || [], 'Any location type');
+}
+
+LOAD.jobs = async () => { await Promise.all([renderTiers(), loadFacets()]); await loadJobs(false); };
 
 $('#track-chips').onclick = (e) => {
   if (e.target.closest('#chip-all')) { TRACKS.forEach((t) => activeTracks.add(t.key)); renderChips().then(() => loadJobs()); return; }
@@ -2683,14 +2793,16 @@ $('#track-chips').onclick = (e) => {
   renderChips().then(() => loadJobs());
 };
 
-['#f-sort', '#f-within', '#f-unknown', '#f-hidden'].forEach((sel) => { const el = $(sel); if (el) el.onchange = () => loadJobs(); });
-['#f-company', '#f-smin', '#f-smax'].forEach((sel) => {
+['#f-sort', '#f-within', '#f-source', '#f-scope', '#f-packet', '#f-unknown', '#f-hidden', '#f-full']
+  .forEach((sel) => { const el = $(sel); if (el) el.onchange = () => loadJobs(); });
+['#f-q', '#f-company', '#f-smin', '#f-smax'].forEach((sel) => {
   $(sel).oninput = () => { clearTimeout(window._t); window._t = setTimeout(() => loadJobs(), 320); };
 });
 $('#f-clear').onclick = () => {
   $('#f-company').value = ''; $('#f-smin').value = ''; $('#f-smax').value = '';
   $('#f-unknown').checked = true; $('#f-hidden').checked = false; $('#f-sort').value = 'score';
-  if ($('#f-within')) $('#f-within').value = '';
+  for (const id of ['#f-within', '#f-q', '#f-source', '#f-scope', '#f-packet']) if ($(id)) $(id).value = '';
+  if ($('#f-full')) $('#f-full').checked = false;
   activeTier = 'match'; renderTiers();
   TRACKS.forEach((t) => activeTracks.add(t.key));
   renderChips().then(() => loadJobs());
@@ -2773,7 +2885,11 @@ async function openJob(id, { apply = false } = {}) {
     <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:20px 0 4px">Packet</h3>
     <div class="files">
       ${f('Research dossier', 'research.md', pk?.research)}
-      ${f('Tailored resume (PDF)', pk?.resumePdf || 'x', pk?.resumePdf)}
+      ${pk?.resumePdf
+        ? `<a class="file" href="packet/${id}/${encodeURIComponent(pk.resumePdf)}" target="_blank">
+             <span>Tailored resume (PDF)</span>
+             <span>${pk.pdfReady ? 'open →' : 'render it · ~80s'}</span></a>`
+        : `<div class="file"><span class="miss">Tailored resume (PDF)</span><span class="miss">not built yet</span></div>`}
       ${f('Loom script', 'loom/script.md', pk?.loomScript)}
       ${f('Loom slides', 'loom/slides.html', pk?.loomSlides)}
       ${pk?.loomSlides ? `<div class="file" style="gap:8px;flex-wrap:wrap">

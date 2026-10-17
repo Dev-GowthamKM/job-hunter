@@ -159,6 +159,10 @@ CREATE INDEX IF NOT EXISTS idx_jobs_elig_hidden_track ON jobs(eligibility, hidde
 -- The Profile tab reads the top-scoring postings per track to work out what that track's language
 -- actually is. Without this it sorted the whole track on an unindexed expression.
 CREATE INDEX IF NOT EXISTS idx_jobs_track_score ON jobs(track, score DESC);
+-- The Jobs tab asks for its facet menus on every visit. Grouping by remote_scope found its rows
+-- through idx_jobs_hidden and then went back to the table for the column, which is the same
+-- lookup-into-a-wide-row trap as every other slow query here.
+CREATE INDEX IF NOT EXISTS idx_jobs_hidden_scope ON jobs(hidden, remote_scope);
 -- The near-miss view needs the REASON for every rejected posting in order to group them, and the
 -- title for the samples it shows. idx_jobs_elig_company covers neither, so 5,596 rows each meant a
 -- random lookup into a row carrying up to 20KB of job description: 12.5 seconds for a page that

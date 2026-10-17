@@ -1,7 +1,7 @@
 # Tessellate — AI Engineer
 
 Job 2 · https://example.com/jobs/tessellate
-Generated from the posting on 2026-09-18. Mechanical pass — a
+Generated from the posting on 2026-10-17. Mechanical pass — a
 `job-researcher` run will overwrite this with funding, news and a confirmed remote policy.
 
 > **This is a summary, not the full posting.** demo gave 624 characters where a
