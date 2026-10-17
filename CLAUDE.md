@@ -365,6 +365,37 @@ Current, under strict `global-only`: **4 match, 48 stretch, 4,032 regional, 497 
 broken filter — genuinely worldwide, full-time, junior-level roles are rare. Say so rather than
 loosening the filter behind his back.
 
+# The company board list cannot find work-from-anywhere roles
+
+Measured 2026-10-17 over three weeks of real data: of 76 configured boards, **2** ever produced a
+match or stretch. Greenhouse alone held 2,160 postings and **zero** at match tier.
+
+This is structural, not a bad list. Companies big enough to run a Greenhouse, Lever or Ashby board
+hire in specific countries. The companies that genuinely hire work-from-anywhere are small and
+unknown - EWOR, Featherless AI, Adalo, Go Vocal, Defuse Labs, Nodeworthy - and they do not have
+boards worth polling one at a time. They post to aggregators.
+
+Probing 64 candidate boards of well-known remote-first companies found exactly two with worldwide
+postings: Canonical (excluded, it is Linux systems work end to end) and Supabase. **Swapping in
+different brand names does not fix this.** `config/companies.json` is for brand-name roles worth
+seeing despite geography; under `global-only` it is close to dead weight, and that is worth knowing
+rather than re-tuning forever.
+
+The leverage is in aggregators. WeWorkRemotely was added for one reason: every posting carries a
+`<region>` field whose vocabulary includes "Anywhere in the World" as a distinct value. 99 postings,
+90 worldwide, 4 eligible on the first run, and descriptions averaging **6,059 characters** against
+RemoteOK's 600. Its region is still only the employer's dropdown, so it is taken as the location
+field and the body still gets the last word.
+
+# Socket pressure, not dead boards
+
+A full run produced twelve `fetch failed` errors against Greenhouse boards that answer HTTP 200
+perfectly well on their own. Running greenhouse alone: **errors 0, 6,901 postings**. Eight global
+sources in parallel, two keeping internal pools, then seventy company boards at concurrency 6 was
+simply too many sockets. Four fixed it: errors 0, and company boards went from 6,510 back to 9,702.
+
+When a board "fails", check whether it fails alone before touching the board list.
+
 # Under-collection is the usual cause of "no jobs"
 
 Workable reports `totalSize` per query and serves 20 at a time. The first version took page one:

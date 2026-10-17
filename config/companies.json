@@ -168,7 +168,8 @@
       "name": "Gopuff",
       "tier": "brand",
       "globalHiring": "unknown",
-      "notes": ""
+      "notes": "lever board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "grafanalabs",
@@ -208,7 +209,8 @@
       "name": "Match Group",
       "tier": "brand",
       "globalHiring": "unknown",
-      "notes": ""
+      "notes": "lever board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "mongodb",
@@ -248,7 +250,8 @@
       "name": "Pipedrive",
       "tier": "brand",
       "globalHiring": "unknown",
-      "notes": ""
+      "notes": "lever board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "postman",
@@ -353,7 +356,8 @@
       "name": "Aha!",
       "tier": "funded-startup",
       "globalHiring": true,
-      "notes": "Fully remote company."
+      "notes": "Fully remote company. greenhouse board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "airbyte",
@@ -481,7 +485,8 @@
       "name": "Ledger",
       "tier": "funded-startup",
       "globalHiring": "unknown",
-      "notes": ""
+      "notes": "lever board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "llamaindex",
@@ -537,7 +542,8 @@
       "name": "Prisma",
       "tier": "funded-startup",
       "globalHiring": "unknown",
-      "notes": "Small remote EU-leaning team."
+      "notes": "Small remote EU-leaning team. greenhouse board returns nothing as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "railway",
@@ -561,7 +567,8 @@
       "name": "Remote.com",
       "tier": "funded-startup",
       "globalHiring": true,
-      "notes": "Remote-first EOR company; hires globally by definition."
+      "notes": "Remote-first EOR company; hires globally by definition. greenhouse slug 404s as of 2026-10-17. Disabled rather than deleted so nobody re-adds it; re-check with npm run hunt:verify.",
+      "disabled": true
     },
     {
       "slug": "resend",
@@ -618,6 +625,14 @@
       "tier": "funded-startup",
       "globalHiring": "unknown",
       "notes": ""
+    },
+    {
+      "slug": "supabase",
+      "ats": "ashby",
+      "name": "Supabase",
+      "tier": "funded-startup",
+      "globalHiring": true,
+      "notes": "Verified 2026-10-17: 31 of 54 postings read as work-from-anywhere. The only company board in this file that produces a match under global-only."
     }
   ]
 }

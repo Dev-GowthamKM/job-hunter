@@ -29,6 +29,7 @@ const GLOBAL = {
   jobicy: './boards/jobicy.mjs',
   arbeitnow: './boards/arbeitnow.mjs',
   remotive: './boards/remotive.mjs',
+  weworkremotely: './boards/weworkremotely.mjs',
 };
 const COMPANY = {
   ashby: './boards/ashby.mjs',
@@ -229,7 +230,14 @@ async function main() {
     // its jobs are gone - it is evidence of nothing - so it is kept out of the retirement pass.
     const ok = new Set();
     const seenBySource = {};
-    await pool(targets, 6, async (c) => {
+    // Four, not six.
+    //
+    // Six was fine when the company sweep was the only thing making requests. With eight global
+    // sources now running in parallel first - two of which keep internal pools of their own - a
+    // full run produced twelve "fetch failed" errors against Greenhouse boards that answer 200
+    // perfectly well on their own. Running greenhouse alone: errors 0, 6,901 postings. The boards
+    // were never the problem; the number of sockets was.
+    await pool(targets, 4, async (c) => {
       try {
         const mod = await import(COMPANY[c.ats]);
         const got = await mod.collect(cfg, { slug: c.slug, company: c });
