@@ -9,6 +9,8 @@
 //   node src/draft.mjs message   --lead=42 --channel=telegram --body-file=outbox/42.md
 //   node src/draft.mjs reply     --chat=12345 --body-file=outbox/reply-12345.md
 //   node src/draft.mjs lead      --title="..." --company="..." --contact="..." --notes="..."
+//   node src/draft.mjs gmail     --msg=5 --draft-id=... --thread-id=... --url=...
+//   node src/draft.mjs replied   --lead=42 --note="asked for a call Thursday"
 //   node src/draft.mjs suppress  --pattern="acme.com" --reason="asked not to be contacted"
 //   node src/draft.mjs answered  --msg=7
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -114,6 +116,62 @@ switch (cmd) {
     console.log(`Lead ${id} added: ${title}`);
     break;
   }
+  case 'gmail': {
+    // Records that an agent placed this message in the owner's real Gmail Drafts. It is NOT sent:
+    // a Gmail draft sits in his mailbox until he clicks send himself, which is the approval gate
+    // expressed in the tool he already uses rather than a second one he has to learn.
+    const id = Number(arg('msg'));
+    D.prepare(`UPDATE messages SET gmail_draft_id=?, gmail_thread_id=?, gmail_url=?,
+                                   delivery='gmail_draft', status='draft' WHERE id=?`)
+     .run(arg('draft-id'), arg('thread-id'), arg('url'), id);
+    const m = D.prepare('SELECT lead_id FROM messages WHERE id=?').get(id);
+    if (m?.lead_id) D.prepare("UPDATE leads SET status='drafted', updated_at=? WHERE id=?").run(now(), m.lead_id);
+    logEvent('gmail_draft', `msg ${id} placed in Gmail drafts`, m?.lead_id ?? null);
+    console.log(`Message ${id} is in your Gmail drafts. One click to send.`);
+    break;
+  }
+  case 'replied': {
+    // The loop closing. Until this exists a pipeline dead-ends at 'sent' and nobody learns anything.
+    const id = Number(arg('lead'));
+    D.prepare("UPDATE leads SET status='replied', notes=COALESCE(notes,'') || ?, updated_at=? WHERE id=?")
+     .run(`\n[reply] ${arg('note') || ''}`, now(), id);
+    logEvent('replied', arg('note') || '', id);
+    console.log(`Lead ${id} replied. That is the first one that matters.`);
+    break;
+  }
+  case 'sent-verified': {
+    // Only ever set from evidence: the message found in Gmail Sent. Never from a button press.
+    const id = Number(arg('msg'));
+    D.prepare("UPDATE messages SET status='sent', delivery='verified', sent_at=?, gmail_thread_id=COALESCE(?,gmail_thread_id) WHERE id=?")
+     .run(arg('at') || now(), arg('thread-id'), id);
+    const m = D.prepare('SELECT lead_id FROM messages WHERE id=?').get(id);
+    if (m?.lead_id) D.prepare("UPDATE leads SET status='sent', updated_at=? WHERE id=?").run(now(), m.lead_id);
+    logEvent('sent_verified', `msg ${id} confirmed in Gmail Sent`, m?.lead_id ?? null);
+    console.log(`Message ${id} confirmed sent.`);
+    break;
+  }
+  case 'park': {
+    // Set a lead aside without deleting it. Out-of-market leads are not rejects: the London and
+    // New York businesses are real and good, they are simply not where the owner can walk in.
+    // Parked is reversible; rejected carries a judgement that was never made about them.
+    const id = arg('lead');
+    const src = arg('source');
+    const from = arg('from-status', 'new');
+    const reason = arg('reason') || 'set aside';
+    let changed;
+    if (id) {
+      changed = D.prepare("UPDATE leads SET status='parked', notes=?, updated_at=? WHERE id=?")
+                 .run(reason, now(), Number(id)).changes;
+    } else if (src) {
+      changed = D.prepare("UPDATE leads SET status='parked', notes=?, updated_at=? WHERE source=? AND status=?")
+                 .run(reason, now(), src, from).changes;
+    } else {
+      throw new Error('park needs --lead=<id> or --source=<name> [--from-status=new]');
+    }
+    logEvent('parked', `${changed} lead(s): ${reason}`);
+    console.log(`Parked ${changed} lead(s). Reversible: they keep every field and can be re-qualified.`);
+    break;
+  }
   case 'suppress': {
     D.prepare('INSERT OR REPLACE INTO suppression (pattern, reason, added_at) VALUES (?,?,?)')
      .run(arg('pattern'), arg('reason'), now());
@@ -122,6 +180,6 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('Commands: lead | qualify | reject | research | message | reply | answered | suppress');
+    console.log('Commands: lead | qualify | reject | research | message | gmail | reply | replied | sent-verified | answered | park | suppress');
     process.exit(1);
 }

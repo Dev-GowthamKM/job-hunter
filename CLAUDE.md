@@ -163,6 +163,58 @@ and every projection prints that rate.
   from keywords. Lever slugs are unguessable and Greenhouse 404s silently, so every slug in there
   was verified live. Re-check with `--verify-companies` when a source goes quiet.
 
+
+# The client arm sends through Gmail, and "sent" now means evidence
+
+The gate used to end at a dashboard button labelled "I sent this". Both client messages read `sent`
+in the database on the day Gmail had never heard of either of them. A button press is a **claim**;
+finding the message in Gmail Sent is **evidence**, and `messages.delivery` now records which one it
+is (`claimed` | `gmail_draft` | `verified`). The dashboard shows claimed-but-unconfirmed sends in
+their own warning block rather than counting them as delivered.
+
+The outbound path is `create_draft` into the owner's real Gmail, recorded with
+`node src/draft.mjs gmail --msg=N --draft-id=... --thread-id=... --url=...`. **A Gmail draft is not
+a send.** It sits in his mailbox until he clicks send himself, which is the same approval gate
+expressed in a tool he already opens every day instead of a second one he has to learn. Never call
+`send_message`; the law at the top of this file covers the client arm exactly as it covers the job
+arm.
+
+Replies close the loop: `node src/draft.mjs replied --lead=N --note="..."`. Before it existed the
+pipeline dead-ended at `sent` and nothing downstream could ever be learned from.
+
+`node src/draft.mjs park` sets a lead aside without judging it. Fifty London and New York businesses
+are real and good; they are simply not somewhere the owner can walk into. Parked keeps every field
+and can be re-qualified. Rejected carries a verdict that was never reached about them.
+
+# The dashboard's design tokens are not the ones you assume
+
+Three bugs in one afternoon, all the same root cause: writing CSS against token names that do not
+exist in this file. **The text token is `--ink`, not `--fg`. The radius token is `--r`, not
+`--radius`.** An undefined custom property does not warn; it falls back, and `fill:var(--fg)`
+renders **black**, which on a dark ground is invisible. The client pipeline shipped as six solid
+black dots with unreadable labels and looked like a broken component rather than a typo.
+
+Check the computed value of a token before building on it. `getComputedStyle(document.documentElement)
+.getPropertyValue('--x')` returning empty is the whole diagnosis.
+
+# Namespace a component's classes or another rewrite will silently kill it
+
+The client pipeline was built as SVG using `.pipe`, `.pipe-track`, `.st-n`, `.st-name`. Those names
+were later redefined for a div-based component: `.pipe-track` became `height:10px; background:...`
+and `.st-name` became `color:var(--muted)`. Applied to SVG, **`height` does nothing and `color` does
+not fill text**, so the track vanished and every label went black. Nothing errored and no console
+line appeared.
+
+It is now plain divs under a `cp-` prefix, and its gate modifier is `.is-gate` rather than `.gate`,
+which belongs to a different component here and was styling it by accident.
+
+# An arm that is off in config looks exactly like an arm that is broken
+
+`config/candidate.json` carries `arms.clients`, and with it `false` the nav button is removed at
+runtime and `/api/clients` answers 404. The owner reasonably read a missing tab and a dead endpoint
+as a bug. Before debugging a missing section of the dashboard, check whether its arm is switched on.
+
+
 # The dashboard
 
 `npm run web`, then http://127.0.0.1:4321. Everything `/hunt` and `/money` do from a terminal, done

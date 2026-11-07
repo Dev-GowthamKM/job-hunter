@@ -96,10 +96,15 @@ function clients() {
     funnel,
     rejected: stages.rejected ?? 0,
     bySource: all('SELECT source, COUNT(*) n FROM leads GROUP BY source ORDER BY n DESC'),
-    waiting: all(`SELECT m.id, m.body, m.subject, m.channel, m.status,
+    waiting: all(`SELECT m.id, m.body, m.subject, m.channel, m.status, m.gmail_url, m.delivery,
                          l.id AS lead_id, l.company, l.contact, l.score, l.angle, l.location, l.offer
                   FROM messages m LEFT JOIN leads l ON l.id = m.lead_id
                   WHERE m.status IN ('draft','pending','approved') ORDER BY m.id`),
+    // Claimed-but-unverified sends. A button press is not evidence, and these should be visible
+    // rather than counted as delivered.
+    unverified: all(`SELECT m.id, m.channel, m.sent_at, l.company, l.contact
+                     FROM messages m LEFT JOIN leads l ON l.id = m.lead_id
+                     WHERE m.status='sent' AND m.delivery='claimed' ORDER BY m.id`),
     live: all(`SELECT id, company, title, score, status, offer, angle, contact, source
                FROM leads WHERE status IN ('qualified','researched','drafted','sent','replied')
                ORDER BY CASE status WHEN 'replied' THEN 0 WHEN 'sent' THEN 1 WHEN 'drafted' THEN 2

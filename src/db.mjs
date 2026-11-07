@@ -62,7 +62,11 @@ CREATE TABLE IF NOT EXISTS messages (
   status      TEXT NOT NULL DEFAULT 'draft',-- draft|approved|sent|skipped|received|failed
   created_at  TEXT NOT NULL,
   sent_at     TEXT,
-  error       TEXT
+  error       TEXT,
+  gmail_draft_id TEXT,              -- the draft sitting in the owner's real Gmail
+  gmail_thread_id TEXT,             -- set once it is actually sent, so replies can be found
+  gmail_url   TEXT,                 -- one click from the dashboard to the draft
+  delivery    TEXT                  -- 'claimed' = a button press, 'verified' = seen in Gmail Sent
 );
 CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status);
 
@@ -316,6 +320,12 @@ export function db() {
     // Migration for databases created before dedupe_key existed, then the index, in that order.
     const cols = _db.prepare('PRAGMA table_info(leads)').all().map((c) => c.name);
     if (!cols.includes('dedupe_key')) _db.exec('ALTER TABLE leads ADD COLUMN dedupe_key TEXT');
+    // Gmail columns. A button press is a CLAIM that something was sent; only finding it in Gmail
+    // Sent is EVIDENCE. Both drafts read 'sent' here while Gmail had never heard of either.
+    const mcols = _db.prepare('PRAGMA table_info(messages)').all().map((c) => c.name);
+    for (const [col, type] of [['gmail_draft_id','TEXT'],['gmail_thread_id','TEXT'],['gmail_url','TEXT'],['delivery','TEXT']]) {
+      if (!mcols.includes(col)) _db.exec(`ALTER TABLE messages ADD COLUMN ${col} ${type}`);
+    }
     _db.exec('CREATE INDEX IF NOT EXISTS idx_leads_dedupe ON leads(dedupe_key)');
   }
   return _db;

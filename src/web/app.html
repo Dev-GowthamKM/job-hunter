@@ -236,6 +236,45 @@ label.f { display:flex; flex-direction:column; gap:6px; font-size:12px; color:va
 .st-n { font-size:25px; font-weight:500; letter-spacing:-.03em; }
 .st-name { font-size:12px; color:var(--muted); margin-top:4px; }
 .st-note { font-size:11.5px; color:var(--dim); margin-top:3px; line-height:1.45; }
+
+/* ── the client pipeline explainer ───────────────────────
+   Namespaced `cp-` deliberately. The first version reused .pipe / .st-* and was silently killed
+   when those names were redefined for a div component: SVG text takes `fill`, not `color`, so
+   every label rendered black on a black ground and the rings became solid dots. */
+.cp { display:flex; align-items:flex-start; position:relative; overflow-x:auto; padding:6px 0 2px; }
+.cp-st { flex:1 1 0; min-width:94px; text-align:center; position:relative; }
+.cp-st:not(:last-child)::before {
+  content:""; position:absolute; top:46px; left:50%; right:-50%; height:2px;
+  background:var(--line-2); z-index:0;
+}
+.cp-n { font:500 24px/1 "JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;
+        color:var(--ink); letter-spacing:-.03em; }
+.cp-node { width:16px; height:16px; margin:10px auto 0; border-radius:50%;
+           background:var(--bg); border:2px solid var(--line-2); position:relative; z-index:1; }
+.cp-st.is-gate { background:var(--bg); border:1px solid var(--line-2); border-radius:var(--r); padding:8px 4px 10px; }
+.cp-st.is-gate .cp-node { width:26px; height:26px; margin-top:5px; border-color:var(--accent); border-width:3px; }
+.cp-st.is-gate .cp-n, .cp-st.is-gate .cp-label { color:var(--accent); }
+.cp-label { font:600 10.5px/1 ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase;
+            color:var(--muted); margin-top:11px; }
+.cp-note { font:400 10.5px/1.4 ui-sans-serif,system-ui; color:var(--dim); margin-top:4px; }
+.cp-flow, .cp-release { position:absolute; top:43px; width:10px; height:10px; border-radius:50%; z-index:2; }
+.cp-flow { background:var(--teal); opacity:0; animation:cpflow 6s linear infinite; }
+.cp-flow.f2 { animation-delay:-1.5s } .cp-flow.f3 { animation-delay:-3s } .cp-flow.f4 { animation-delay:-4.5s }
+@keyframes cpflow {
+  0%   { left:7%;  opacity:0 }
+  8%   { opacity:.95 }
+  64%  { left:calc(50% - 5px); opacity:.95 }
+  100% { left:calc(50% - 5px); opacity:.95 }
+}
+.cp-release { background:var(--accent); opacity:0; animation:cprelease 6s linear infinite; }
+@keyframes cprelease {
+  0%,66% { left:calc(50% - 5px); opacity:0 }
+  72%    { opacity:1 }
+  97%    { left:91%; opacity:1 }
+  100%   { left:91%; opacity:0 }
+}
+@media (prefers-reduced-motion: reduce) { .cp-flow,.cp-release { animation:none; opacity:.5 } }
+
 .cl-card { border:1px solid var(--line); border-radius:var(--r); padding:15px 17px; background:var(--panel); margin-bottom:9px; }
 .cl-head { display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
 .cl-name { font-weight:600; }
@@ -400,19 +439,8 @@ input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible
 
   <div class="card" style="margin-top:14px">
     <h3>How the machine works</h3>
-    <div class="pipe-wrap">
-      <svg class="pipe" viewBox="0 0 900 132" role="img" aria-labelledby="pipe-t">
-        <title id="pipe-t">Leads flow through five agent stages and stop at your approval before reaching a client.</title>
-        <line class="pipe-track" x1="60" y1="52" x2="840" y2="52"></line>
-        <g class="pipe-dots">
-          <circle class="pd" cx="0" cy="52" r="4"></circle><circle class="pd d2" cx="0" cy="52" r="4"></circle>
-          <circle class="pd d3" cx="0" cy="52" r="4"></circle><circle class="pd d4" cx="0" cy="52" r="4"></circle>
-          <circle class="pd d5" cx="0" cy="52" r="4"></circle>
-        </g>
-        <circle class="pd out" cx="0" cy="52" r="4"></circle>
-        <g id="pipe-stations"></g>
-      </svg>
-    </div>
+    <div class="cp" id="cp" role="img"
+         aria-label="Leads flow through five agent stages and stop at your approval before reaching a client."></div>
     <p class="note" style="margin-top:10px">
       Five agents hand work to each other with no input from you. They stop dead at the gate.
       Nothing reaches a business until you approve it, and that is enforced in the code, not in a prompt.
@@ -423,6 +451,7 @@ input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible
   <div id="cl-banner"></div>
 
   <h2 class="sec">Waiting for you <span class="pill" id="cl-wait-n">0</span></h2>
+  <div id="cl-unverified"></div>
   <div id="cl-waiting"></div>
 
   <h2 class="sec">In play</h2>
@@ -665,17 +694,16 @@ const STATIONS = [
 
 function drawPipe(funnel) {
   const by = Object.fromEntries(funnel.map((f) => [f.key, f]));
-  $('#pipe-stations').innerHTML = STATIONS.map((st) => {
-    const f = by[st.k] || { n: 0 };
-    const g = st.gate ? ' gate' : '';
-    return `
-      ${st.gate ? `<line class="gate-bar" x1="${st.x}" y1="22" x2="${st.x}" y2="36"></line>
-                   <line class="gate-bar" x1="${st.x}" y1="68" x2="${st.x}" y2="82"></line>` : ''}
-      <circle class="st-ring${g}" cx="${st.x}" cy="52" r="${st.gate ? 15 : 10}"></circle>
-      <text class="st-n" x="${st.x}" y="${st.gate ? 20 : 26}">${f.n}</text>
-      <text class="st-name${g}" x="${st.x}" y="${st.gate ? 100 : 96}">${st.label}</text>
-      <text class="st-note" x="${st.x}" y="${st.gate ? 114 : 110}">${st.note}</text>`;
-  }).join('');
+  $('#cp').innerHTML = STATIONS.map((st) => {
+    const n = (by[st.k] || { n: 0 }).n;
+    return `<div class="cp-st${st.gate ? ' is-gate' : ''}">
+        <div class="cp-n">${n}</div><div class="cp-node"></div>
+        <div class="cp-label">${st.label}</div><div class="cp-note">${st.note}</div>
+      </div>`;
+  }).join('')
+    + '<span class="cp-flow"></span><span class="cp-flow f2"></span>'
+    + '<span class="cp-flow f3"></span><span class="cp-flow f4"></span>'
+    + '<span class="cp-release"></span>';
 }
 
 LOAD.clients = async () => {
@@ -704,6 +732,16 @@ LOAD.clients = async () => {
     </div>`;
 
   $('#cl-wait-n').textContent = d.waiting.length;
+  // Claimed sends with no evidence behind them. Gmail had never heard of either message the day
+  // the pipeline reported both as sent, so this row exists to stop that number lying again.
+  $('#cl-unverified').innerHTML = (d.unverified || []).length
+    ? `<div class="card" style="border-left:3px solid var(--warn);margin-bottom:12px">
+         <b>${d.unverified.length} message${d.unverified.length === 1 ? '' : 's'} marked sent, not confirmed</b>
+         <div class="note" style="margin-top:6px">A button press is a claim. Email sends are confirmed against Gmail;
+         WhatsApp and phone cannot be checked from here, so these stay flagged until you say otherwise.</div>
+         ${d.unverified.map((u) => `<div class="note" style="margin-top:6px">· ${esc(u.company || '?')} — ${esc(u.channel)} — ${esc(u.contact || '')}</div>`).join('')}
+       </div>`
+    : '';
   $('#cl-waiting').innerHTML = d.waiting.length ? d.waiting.map((m) => `
     <div class="cl-card">
       <div class="cl-head">
@@ -712,7 +750,9 @@ LOAD.clients = async () => {
           <span class="pill">${esc(m.channel)}</span>
           ${m.score != null ? `<span class="pill">score ${m.score}</span>` : ''}
           <button class="act ghost" data-copy="${m.id}">Copy</button>
-          <button class="act" data-sent="${m.id}">I sent this</button>
+          ${m.gmail_url
+            ? `<a class="act" href="${m.gmail_url}" target="_blank" rel="noopener">Open in Gmail</a>`
+            : `<button class="act ghost" data-sent="${m.id}">I sent this by hand</button>`}
         </span>
       </div>
       ${m.angle ? `<p class="cl-angle">${esc(m.angle)}</p>` : ''}
