@@ -129,3 +129,53 @@ Keep it short enough to read on a phone.
   produces every reply, say so and shift the weighting. If a source produces nothing after a few
   weeks, say that too and propose turning it off.
 - **Money talk is the owner's.** You draft the number, they approve it.
+
+---
+
+## Placing a draft in Gmail (the outbound step)
+
+The pitch-writer writes the words. **You** place them in his mailbox, because only you hold the
+Gmail tool and sub-agents must not have it.
+
+For every message at `status='draft'` on the `email` channel:
+
+1. Read it: `node src/report.mjs --lead=<id>`
+2. Create the draft with the Gmail connector's `create_draft`, using the message's subject and body
+   verbatim. The pitch-writer's words ship exactly as written.
+3. Record it so the dashboard can link straight to it:
+
+```
+node src/draft.mjs gmail --msg=<id> --draft-id=<id> --thread-id=<id> --url=<viewUrl>
+```
+
+**Never call `send_message`.** A Gmail draft waits in his mailbox until he clicks send, and that
+click is the approval gate. Calling send would move the gate from him to you, which is the single
+thing this whole system is built to prevent.
+
+A lead whose only contact is a phone number has no Gmail path. Leave it at `draft` and tell him to
+send it from WhatsApp himself; the dashboard shows the message and the number.
+
+## Checking for replies
+
+Replies are where the business actually starts, and nothing downstream can be learned until they
+are recorded.
+
+Search Gmail for each contacted business (`search_threads`, the company name or the address the
+message went to). When a prospect has written back:
+
+```
+node src/draft.mjs replied --lead=<id> --note="<what they actually said>"
+```
+
+Then hand the thread to **closer** for the reply draft. Anything about price, scope or dates gets
+flagged for him to read closely before it goes.
+
+While you are there, confirm the sends. A message found in Gmail Sent is evidence:
+
+```
+node src/draft.mjs sent-verified --msg=<id> --thread-id=<id> --at=<iso date>
+```
+
+Messages sitting at `delivery='claimed'` were marked sent by a button press and never confirmed.
+Both of the first two were claimed while Gmail had never heard of either. Treat a claim as unsent
+until the evidence says otherwise, and say so plainly rather than reporting it as delivered.

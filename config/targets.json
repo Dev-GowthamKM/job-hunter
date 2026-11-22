@@ -165,6 +165,78 @@
         "note": "Home city. Highest close rate available: same timezone, calls and in-person meetings possible."
       },
       {
+        "id": "blr-indiranagar",
+        "name": "Indiranagar, Bengaluru",
+        "bbox": [
+          12.967,
+          77.63,
+          12.985,
+          77.65
+        ],
+        "tier": 1,
+        "note": "100ft Road and 12th Main. Dense independent food and retail."
+      },
+      {
+        "id": "blr-koramangala",
+        "name": "Koramangala, Bengaluru",
+        "bbox": [
+          12.925,
+          77.615,
+          12.945,
+          77.64
+        ],
+        "tier": 1,
+        "note": "Startup belt. Cafes, studios, clinics, young owners."
+      },
+      {
+        "id": "blr-jayanagar",
+        "name": "Jayanagar, Bengaluru",
+        "bbox": [
+          12.92,
+          77.575,
+          12.94,
+          77.595
+        ],
+        "tier": 2,
+        "note": "Established family businesses, often decades old with no web presence."
+      },
+      {
+        "id": "blr-whitefield",
+        "name": "Whitefield, Bengaluru",
+        "bbox": [
+          12.96,
+          77.72,
+          12.985,
+          77.75
+        ],
+        "tier": 2,
+        "note": "Tech corridor. Newer restaurants and services chasing office crowds."
+      },
+      {
+        "id": "blr-hsr",
+        "name": "HSR Layout, Bengaluru",
+        "bbox": [
+          12.905,
+          77.635,
+          12.925,
+          77.66
+        ],
+        "tier": 2,
+        "note": "Newer independent food and fitness, owners under 40."
+      },
+      {
+        "id": "blr-malleshwaram",
+        "name": "Malleshwaram, Bengaluru",
+        "bbox": [
+          12.995,
+          77.565,
+          13.012,
+          77.585
+        ],
+        "tier": 2,
+        "note": "Traditional retail and eateries, very low web presence."
+      },
+      {
         "id": "new-york",
         "name": "New York, USA",
         "bbox": [

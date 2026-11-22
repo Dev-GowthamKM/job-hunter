@@ -1,16 +1,20 @@
 #!/usr/bin/env node
-// FULL AUTHORITY MODE. The one place a message becomes sendable without Gowtham tapping approve.
+// AUTOPILOT: the agents prepare everything and stop one click short.
 //
-// It exists because he asked for it. Every rule here is a brake that still applies, because the cost
-// of a bad autonomous send is not a wasted message, it is his name and his phone number on something
-// wrong, in front of a business he wanted to work with, with no way to unsend it.
+// He asked for full authority, and this is as far as it goes without breaking the law at the top of
+// CLAUDE.md. Autopilot selects which drafts are good enough to go, and an agent then places them in
+// his real Gmail as drafts. It never calls send. The cost of a bad autonomous send is not a wasted
+// message: it is his name and his number on something wrong, in front of a business he wanted, with
+// no way to unsend it. A Gmail draft costs one tap and removes that whole class of mistake.
+//
+// What it prints is a worklist: the messages that cleared every brake and are ready to be drafted
+// into Gmail. The CEO cycle does the placing, because only an agent holds the Gmail tool.
 //
 //   node src/autopilot.mjs --dry-run    show what it WOULD approve
 //   node src/autopilot.mjs              approve and send
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG, db, now, logEvent, isSuppressed, sentToday, getState, ROOT } from './db.mjs';
-import { sendApproved } from './telegram/outbox.mjs';
 
 const D = db();
 const dryRun = process.argv.includes('--dry-run');
@@ -46,7 +50,8 @@ const cfg = JSON.parse(readFileSync(join(CONFIG, 'targets.json'), 'utf8'));
 const drafts = D.prepare("SELECT * FROM messages WHERE status='draft' ORDER BY id").all();
 const sentEver = D.prepare("SELECT COUNT(*) n FROM messages WHERE status='sent'").get().n;
 
-console.log(`Autopilot ${cfg.autopilot?.enabled ? 'ON' : 'OFF'}${dryRun ? ' (dry run)' : ''} — ${drafts.length} draft(s), ${sentEver} sent all time\n`);
+console.log(`Autopilot ${cfg.autopilot?.enabled ? 'ON' : 'OFF'}${dryRun ? ' (dry run)' : ''} — ${drafts.length} draft(s), ${sentEver} sent all time`);
+console.log('Cleared messages are queued for Gmail. Nothing here sends.\n');
 
 let approved = 0;
 for (const m of drafts) {
@@ -57,14 +62,13 @@ for (const m of drafts) {
   console.log(`  SEND  msg ${m.id}  ${String(who).slice(0, 34).padEnd(34)} score ${lead.score}, ${m.channel}`);
   approved++;
   if (!dryRun) {
-    D.prepare("UPDATE messages SET status='approved' WHERE id=?").run(m.id);
-    logEvent('autopilot_approved', `msg ${m.id} score ${lead.score}`, m.lead_id);
+    D.prepare("UPDATE messages SET delivery='cleared_for_gmail' WHERE id=?").run(m.id);
+    logEvent('autopilot_cleared', `msg ${m.id} score ${lead.score} cleared for a Gmail draft`, m.lead_id);
   }
 }
 
 if (!dryRun && approved) {
-  const r = await sendApproved({ verbose: true });
-  console.log(`\n${r.sent} sent, ${r.capped} held by the cap.`);
+  console.log(`\n${approved} cleared for Gmail. Run /ceo to place them as drafts in your mailbox.`);
 } else if (dryRun) {
   console.log(`\n${approved} would be approved. Nothing written.`);
 } else {
