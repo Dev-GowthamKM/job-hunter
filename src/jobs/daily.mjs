@@ -14,7 +14,7 @@
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { logEvent } from '../db.mjs';
+import { logEvent, db } from '../db.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const step = (label, args) => {
@@ -26,6 +26,36 @@ const step = (label, args) => {
   console.log(`=== ${label}: ${r.status === 0 ? 'ok' : `FAILED (exit ${r.status})`} in ${secs}s ===`);
   return { ok: r.status === 0, secs };
 };
+
+// Has today's collection already happened?
+//
+// This exists because StartCalendarInterval does not work on a laptop. The agent was set for 07:00
+// and the Mac is shut at 07:00: launchd reported runs = 0 and the collection silently stopped for
+// eight days while the dashboard went on saying "collecting every day at 07:00". A missed calendar
+// job is supposed to fire on wake and did not.
+//
+// So the agent now asks every couple of hours instead, and this is what stops that becoming eight
+// crawls a day. The database is the source of truth rather than a timestamp file, because the
+// database is the thing that would actually have the postings.
+const ranToday = () => {
+  const since = new Date(); since.setHours(0, 0, 0, 0);
+  return db().prepare(
+    "SELECT COUNT(*) n FROM events WHERE kind = 'daily_run' AND at >= ?").get(since.toISOString()).n > 0;
+};
+
+const FORCE = process.argv.includes('--force');
+const AFTER_HOUR = Number(process.env.DAILY_AFTER_HOUR || 7);
+
+if (!FORCE) {
+  if (ranToday()) {
+    console.log(`Already collected today. Nothing to do. (--force overrides.)`);
+    process.exit(0);
+  }
+  if (new Date().getHours() < AFTER_HOUR) {
+    console.log(`Before ${String(AFTER_HOUR).padStart(2, '0')}:00 local, so holding off. Will try again on the next wake-up.`);
+    process.exit(0);
+  }
+}
 
 const hunt = step('hunt', ['src/jobs/hunt.mjs']);
 // Score even if the hunt failed partway: it may still have stored something before it broke, and

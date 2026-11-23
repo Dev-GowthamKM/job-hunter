@@ -36,6 +36,7 @@
     "service": "node --no-warnings=ExperimentalWarning src/service.mjs",
     "adjudicate": "node --no-warnings=ExperimentalWarning src/jobs/adjudicate.mjs",
     "daily": "node --no-warnings=ExperimentalWarning src/jobs/daily.mjs",
-    "open": "node --no-warnings=ExperimentalWarning src/service.mjs open"
+    "open": "node --no-warnings=ExperimentalWarning src/service.mjs open",
+    "ceo:daily": "node --no-warnings=ExperimentalWarning src/ceo-daily.mjs"
   }
 }

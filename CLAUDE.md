@@ -267,6 +267,24 @@ Three things about it that are deliberate:
   descriptions overnight is useful; a model deciding to submit an application is the failure this
   system exists to prevent, and a scheduled task is the worst possible place to allow it.
 
+# StartCalendarInterval does not work on a laptop
+
+Set for 07:00. `launchctl print` reported **runs = 0** and the collection had silently stopped for
+eight days, while `service status` went on saying "collecting every day at 07:00" the entire time.
+The Mac is shut at 07:00 - the power log shows it sleeping overnight and waking on lid-open - and
+the missed calendar job that launchd is documented to replay on wake never ran.
+
+The agent now uses `StartInterval` (two hours) with `DAILY_AFTER_HOUR`, and **daily.mjs holds the
+once-a-day rule**: it checks the `events` table for a `daily_run` today and exits 0 if there is one.
+Being asked twelve times a day costs twelve database reads, not twelve crawls. `--force` overrides.
+
+The database is the source of truth for "did it run", not a timestamp file, because the database is
+the thing that would actually hold the postings.
+
+**And the status line now reports the outcome rather than the schedule.** Printing the configured
+time as though it were evidence of running is what hid this for eight days; it says when the last
+collection actually happened and shouts if that was two or more days ago.
+
 # The dashboard needs to be findable, not just running
 
 It lived at 127.0.0.1:4321 with no icon, no Spotlight entry and no Dock presence, so the owner had

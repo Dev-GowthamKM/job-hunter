@@ -16,6 +16,31 @@ const TLDS_BY_CITY = [
   [/bengaluru|mumbai/i,  ['in', 'co.in', 'com']],
 ];
 
+// Words common enough that a domain built from one is almost certainly somebody else's.
+const GENERIC = new Set([
+  'mountain','mother','nationwide','dental','clinic','hospital','medical','beauty','salon','spa',
+  'coffee','cafe','restaurant','hotel','bakery','kitchen','garden','house','grand','royal','golden',
+  'green','blue','white','black','silver','classic','modern','premium','quality','perfect','best',
+  'first','prime','elite','smart','happy','lucky','super','global','national','central','city',
+  'metro','urban','village','family','paratha','karnataka','india','indian','bangalore','bengaluru',
+  'child','children','care','health','wellness','studio','store','shop','centre','center','point',
+  'world','plaza','palace','corner','junction','express','fresh','pure','natural','organic','smile',
+  'smiles','skin','hair','nails','fitness','gym','yoga','dentist','doctor','surgery','pharmacy',
+]);
+const STOPWORD = new Set(['and','the','of','for','a','an','&','in','at','on','by','with','to']);
+
+/** Can a domain be guessed for this name at all?
+ *  A business called "Nationwide" or "Dental Clinic" shares its name with the whole internet.
+ *  nationwide.co.in and dentalclinic.in both resolve, to strangers, and asserting those are the
+ *  business's own site rejects a perfectly good lead for a website it has never heard of.
+ *  When nothing in the name is distinctive, say so instead of guessing. */
+export function nameIsGeneric(name) {
+  const words = String(name).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+  const meaningful = words.filter((w) => w.length >= 3 && !STOPWORD.has(w));
+  if (!meaningful.length) return true;
+  return meaningful.every((w) => GENERIC.has(w));
+}
+
 function slugify(text) {
   return String(text).toLowerCase()
     .replace(/&/g, 'and')
@@ -35,8 +60,16 @@ function nameCandidates(name) {
   // "Dali & Gala" lives at daligala.com, not daliandgala.com. An ampersand gets dropped about as
   // often as it gets spelled out, so try both readings.
   if (/&/.test(raw)) out.push(raw.replace(/\s*&\s*/g, ' '), head.replace(/\s*&\s*/g, ' '));
-  const firstWord = raw.split(/\s+/)[0];
-  if (firstWord && firstWord.length >= 5) out.push(firstWord);
+  // The first word alone is only the trading name on a SHORT name. On "Mountain Bee kombucha
+  // Hive" it is "Mountain", and mountain.com exists and belongs to a stranger, so the lead was
+  // rejected for owning a website it has never heard of. Same for mother.com, nationwide.co.in
+  // and dentalclinic.in. A false positive here silently deletes a good lead, which is worse than
+  // a miss because nobody ever sees it happen.
+  const words = raw.trim().split(/\s+/);
+  const firstWord = words[0];
+  if (words.length <= 2 && firstWord && firstWord.length >= 5 && !GENERIC.has(firstWord.toLowerCase())) {
+    out.push(firstWord);
+  }
   // "Marzipan Cafe" lives at themarzipan.com. The definite article gets added about as often as
   // it gets dropped, so probe both readings of every candidate built so far.
   for (const v of [...out]) if (!/^the\b/i.test(v)) out.push('the ' + v);
@@ -95,10 +128,13 @@ async function alive(domain) {
 /** Probe many businesses with bounded concurrency. Returns a found-URL (or null) per input, in order. */
 export async function probeForWebsite(items, concurrency = 6) {
   const out = new Array(items.length).fill(null);
+  // Generic names are left unprobed rather than guessed at. osm.mjs flags them so the researcher
+  // knows the absence of a result here proves nothing about them.
   let cursor = 0;
   const worker = async () => {
     while (cursor < items.length) {
       const i = cursor++;
+      if (nameIsGeneric(items[i].name)) continue;
       for (const d of candidateDomains(items[i].name, items[i].city)) {
         const hit = await alive(d);
         if (hit) { out[i] = hit; break; }

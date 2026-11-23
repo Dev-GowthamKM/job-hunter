@@ -106,8 +106,16 @@ function huntPlist(hour, minute) {
     <string>${esc(join(ROOT, 'src', 'jobs', 'daily.mjs'))}</string>
   </array>
   <key>WorkingDirectory</key><string>${esc(ROOT)}</string>
-  <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>${hour}</integer><key>Minute</key><integer>${minute}</integer></dict>
+  <!-- An interval, not a calendar time, because this machine is a laptop.
+       StartCalendarInterval at 07:00 fired ZERO times in eight days: the Mac is shut at 07:00, and
+       the missed job that launchd is supposed to run on wake never ran. The dashboard went on
+       reporting "collecting every day at 07:00" the whole time.
+       Asking every two hours means it runs on the first wake-up after the chosen hour instead.
+       daily.mjs holds the once-a-day rule, so being asked twelve times costs twelve database
+       reads, not twelve crawls. -->
+  <key>StartInterval</key><integer>7200</integer>
+  <key>EnvironmentVariables</key>
+  <dict><key>DAILY_AFTER_HOUR</key><string>${hour}</string></dict>
   <!-- Not RunAtLoad. This hits 84 job boards; firing it every time someone logs in would be rude
        to them and useless to the owner. -->
   <key>RunAtLoad</key><false/>
@@ -154,12 +162,14 @@ async function lastDaily() {
     const { db } = await import('./db.mjs');
     const r = db().prepare("SELECT at, detail FROM events WHERE kind IN ('daily_run','hunt_run') ORDER BY id DESC LIMIT 1").get();
     if (!r) return null;
-    const when = new Date(r.at).toLocaleString();
+    const at = new Date(r.at).getTime();
     let d = {};
     try { d = JSON.parse(r.detail || '{}'); } catch { /* older rows stored plain text */ }
-    if (d.hunt === false || d.score === false) return `${when} — finished with errors, see the log`;
-    if (d.stored != null) return `${when} — ${d.stored} new postings, ${d.dup ?? 0} already known`;
-    return when;
+    const when = new Date(r.at).toLocaleString();
+    const text = (d.hunt === false || d.score === false) ? `${when} — finished with errors, see the log`
+      : d.stored != null ? `${when} — ${d.stored} new postings, ${d.dup ?? 0} already known`
+      : when;
+    return { text, at };
   } catch { return null; }
 }
 
@@ -324,7 +334,9 @@ exec open "$URL"
   const hh = String(hour).padStart(2, '0'), mm = String(minute).padStart(2, '0');
   console.log(`Collecting every day at ${hh}:${mm}. It collects and scores.`);
   console.log(`A full run is about two minutes across 84 boards and roughly 16,000 postings.`);
-  console.log(`If the Mac is asleep at ${hh}:${mm}, launchd runs it when the Mac next wakes.`);
+  console.log(`Asleep at ${hh}:${mm} is fine: it is asked every two hours and runs on the first`);
+  console.log(`wake-up after that, once a day. Relying on launchd to replay a missed calendar job`);
+  console.log(`did not work - it fired zero times in eight days on a laptop that is shut at 07:00.`);
   console.log(`It never applies to anything. That still needs you.`);
   console.log(`Logs: ${HUNT_LOG}`);
   console.log(`Run one now without waiting:  npm run service hunt-now`);
@@ -370,10 +382,18 @@ exec open "$URL"
 
   console.log('');
   if (existsSync(HUNT_PLIST) && loaded(HUNT_LABEL)) {
-    const t = /<key>Hour<\/key><integer>(\d+)<\/integer><key>Minute<\/key><integer>(\d+)<\/integer>/
-      .exec(readFileSync(HUNT_PLIST, 'utf8'));
-    const when = t ? `${String(t[1]).padStart(2, '0')}:${String(t[2]).padStart(2, '0')}` : 'a set time';
-    console.log(`collecting   every day at ${when}`);
+    const t = /<key>DAILY_AFTER_HOUR<\/key><string>(\d+)<\/string>/.exec(readFileSync(HUNT_PLIST, 'utf8'));
+    const when = t ? `${String(t[1]).padStart(2, '0')}:00` : 'a set time';
+    console.log(`collecting   once a day, on the first wake-up after ${when}`);
+
+    // Say when it last actually ran, and shout if that was a while ago. The old status line
+    // reported the SCHEDULE as though it were the outcome, so eight days of silence read as
+    // "collecting every day at 07:00" right up until someone checked the database.
+    const last = await lastDaily();
+    if (last) {
+      const days = Math.floor((Date.now() - last.at) / 86400000);
+      if (days >= 2) console.log(`             NOT FOR ${days} DAYS — was the Mac asleep, or is something failing?`);
+    }
 
     // Say when one is happening NOW.
     //
@@ -386,8 +406,7 @@ exec open "$URL"
       console.log(`             watch it: tail -f ${HUNT_LOG}`);
     }
 
-    const last = await lastDaily();
-    console.log(`last run     ${last || 'not yet'}`);
+    console.log(`last run     ${last ? last.text : 'not yet'}`);
   } else {
     console.log(`collecting   no — the job count will not change on its own`);
     console.log(`             turn it on: npm run service schedule`);
