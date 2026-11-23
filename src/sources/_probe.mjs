@@ -26,6 +26,13 @@ const GENERIC = new Set([
   'child','children','care','health','wellness','studio','store','shop','centre','center','point',
   'world','plaza','palace','corner','junction','express','fresh','pure','natural','organic','smile',
   'smiles','skin','hair','nails','fitness','gym','yoga','dentist','doctor','surgery','pharmacy',
+  // Place names are the same trap one layer down: a clinic called "Koramangala Poly Clinic" is not
+  // the owner of koramangala.in, which is an area portal. Every district the scout rotates through
+  // belongs here, because the scout is guaranteed to meet businesses named after it.
+  'koramangala','indiranagar','jayanagar','whitefield','malleshwaram','hsr','layout','nagar',
+  'cross','road','street','main','market','circle','colony','extension','phase','sector','block',
+  'london','newyork','toronto','sydney','dubai','singapore','zurich','amsterdam','berlin','dublin',
+  'chicago','austin','miami','vancouver','melbourne','manchester','mumbai','delhi','chennai',
 ]);
 const STOPWORD = new Set(['and','the','of','for','a','an','&','in','at','on','by','with','to']);
 
