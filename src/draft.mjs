@@ -172,6 +172,30 @@ switch (cmd) {
     console.log(`Parked ${changed} lead(s). Reversible: they keep every field and can be re-qualified.`);
     break;
   }
+  case 'reopen': {
+    // A verdict made on data since proven wrong. Six leads were rejected for owning websites that
+    // turned out to belong to strangers: the probe guessed mountain.com for "Mountain Bee kombucha
+    // Hive" and nationwide.co.in for a shop called "Nationwide". A pipeline that cannot take a
+    // rejection back quietly loses every lead its own bugs killed.
+    const ids = String(arg('leads') || arg('lead') || '').split(',').map((x) => Number(x.trim())).filter(Boolean);
+    if (!ids.length) throw new Error('reopen needs --lead=<id> or --leads=1,2,3');
+    const reason = arg('reason') || 'verdict made on data since proven wrong';
+    let n = 0;
+    for (const id of ids) {
+      const row = D.prepare('SELECT raw_json FROM leads WHERE id=?').get(id);
+      if (!row) continue;
+      let raw = {};
+      try { raw = row.raw_json ? JSON.parse(row.raw_json) : {}; } catch {}
+      if (arg('clear-probe')) { raw.probedWebsite = null; raw.probeUnreliable = true; }
+      D.prepare(`UPDATE leads SET status='new', score=NULL, offer=NULL,
+                                  notes=?, raw_json=?, updated_at=? WHERE id=?`)
+       .run(`reopened: ${reason}`, JSON.stringify(raw), now(), id);
+      n++;
+    }
+    logEvent('reopened', `${n} lead(s): ${reason}`);
+    console.log(`Reopened ${n} lead(s) for a fresh verdict.`);
+    break;
+  }
   case 'suppress': {
     D.prepare('INSERT OR REPLACE INTO suppression (pattern, reason, added_at) VALUES (?,?,?)')
      .run(arg('pattern'), arg('reason'), now());
@@ -180,6 +204,6 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('Commands: lead | qualify | reject | research | message | gmail | reply | replied | sent-verified | answered | park | suppress');
+    console.log('Commands: lead | qualify | reject | research | message | gmail | reply | replied | sent-verified | answered | park | reopen | suppress');
     process.exit(1);
 }

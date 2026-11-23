@@ -3,7 +3,7 @@
 // literal "this business needs a website" list, worldwide, for nothing.
 // Data is ODbL licensed — attribute OpenStreetMap if you ever republish it.
 import { fetchWithRetry, sleep } from './_util.mjs';
-import { probeForWebsite } from './_probe.mjs';
+import { probeForWebsite, nameIsGeneric } from './_probe.mjs';
 import { getState, setState } from '../db.mjs';
 
 export const ATTRIBUTION = 'Business data © OpenStreetMap contributors (ODbL)';
@@ -133,6 +133,9 @@ export async function collect(cfg, opts = {}) {
       const found = results[i];
       l.raw.probedWebsite = found;
       l.raw.verificationRequired = true;
+      // A generic name was never probed, so "no site found" means nothing for it either way.
+      // Without this the qualifier reads silence as evidence, in both directions.
+      l.raw.probeUnreliable = nameIsGeneric(l.company || '');
       if (found) l.raw.relevance -= 40;      // still worth a redesign pitch, but it is a different pitch
       l.raw.suggestedOffer = found ? 'website-redesign' : 'website';
     });
