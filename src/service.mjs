@@ -160,7 +160,13 @@ function answering() {
 async function lastDaily() {
   try {
     const { db } = await import('./db.mjs');
-    const r = db().prepare("SELECT at, detail FROM events WHERE kind IN ('daily_run','hunt_run') ORDER BY id DESC LIMIT 1").get();
+    // Filtered runs excluded: a one-board diagnostic is not the day's collection, and letting it
+    // answer "when did this last run" is how a healthy crawl reads as a dead one.
+    const r = db().prepare(`SELECT at, detail FROM events
+      WHERE kind IN ('daily_run','hunt_run')
+        AND COALESCE(json_extract(detail, '$.filtered'), 0) = 0
+        AND (kind = 'daily_run' OR COALESCE(json_extract(detail, '$.seen'), 0) > 0)
+      ORDER BY id DESC LIMIT 1`).get();
     if (!r) return null;
     const at = new Date(r.at).getTime();
     let d = {};

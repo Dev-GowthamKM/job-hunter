@@ -371,7 +371,13 @@ async function main() {
     // Keep search in step with the crawl. Rebuilding beats triggers here: triggers would fire on
     // each of ~12,000 upserts, and this takes about six seconds against a run that takes thirty.
     try { rebuildSearchIndex(); } catch (e) { console.log(`  search index: ${e.message}`); }
-    logEvent('hunt_run', { ...tally, secs: timings, byTrack });
+    // Say whether this was the real sweep. `--company=browserbase` is a one-board diagnostic that
+    // legitimately reports 0 new postings, and the status line was reading it as the last
+    // collection: "last run — 0 new postings, 0 already known", two minutes after a healthy
+    // 12,177-posting run. Reporting a filtered run as the collection is the same mistake as
+    // reporting the schedule as the outcome.
+    const filtered = !!(onlySource || onlyCompany || onlyTrack);
+    logEvent('hunt_run', { ...tally, filtered, secs: timings, byTrack });
     console.log(`\nNext: node src/jobs/report.mjs           what is worth your time`);
     console.log(`      node src/jobs/report.mjs --near-miss  what the filter threw away, and why`);
   }
