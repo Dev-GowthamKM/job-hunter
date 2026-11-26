@@ -166,11 +166,26 @@ async function lastDaily() {
     let d = {};
     try { d = JSON.parse(r.detail || '{}'); } catch { /* older rows stored plain text */ }
     const when = new Date(r.at).toLocaleString();
-    const text = (d.hunt === false || d.score === false) ? `${when} — finished with errors, see the log`
-      : d.stored != null ? `${when} — ${d.stored} new postings, ${d.dup ?? 0} already known`
-      : when;
-    return { text, at };
+    // A run that took 87 minutes of clock and 90 seconds of work is not a slow run, it is a
+    // sleeping laptop, and saying "87 minutes" sends the next person hunting for a slow source.
+    const clock = d.frozenSecs > 60
+      ? ` (${Math.round(d.wallSecs / 60)} min of clock, ${d.workSecs}s of work — the Mac slept)` : '';
+    const text = d.collapsed ? `${when} — DID NOT SEE THE BOARDS, so it did not count. Retrying on the next tick.`
+      : (d.hunt === false || d.score === false) ? `${when} — finished with errors, see the log`
+      : d.stored != null ? `${when} — ${d.stored} new postings, ${d.dup ?? 0} already known${clock}`
+      : `${when}${clock}`;
+    return { text, at, collapsed: !!d.collapsed };
   } catch { return null; }
+}
+
+/** How many times today the agent woke, found no network, and declined to crawl. */
+async function offlineHolds() {
+  try {
+    const { db } = await import('./db.mjs');
+    const since = new Date(); since.setHours(0, 0, 0, 0);
+    return db().prepare("SELECT COUNT(*) n FROM events WHERE kind = 'daily_skipped' AND at >= ?")
+      .get(since.toISOString()).n;
+  } catch { return 0; }
 }
 
 const cmd = process.argv[2] || 'status';
@@ -394,6 +409,12 @@ exec open "$URL"
       const days = Math.floor((Date.now() - last.at) / 86400000);
       if (days >= 2) console.log(`             NOT FOR ${days} DAYS — was the Mac asleep, or is something failing?`);
     }
+
+    // launchd starts this job inside 7-to-9-second DarkWake maintenance windows where there is no
+    // network at all. It now declines to crawl rather than failing against every board, and that
+    // is a normal, healthy thing to see here - not a fault.
+    const skips = await offlineHolds();
+    if (skips) console.log(`             ${skips} tick${skips === 1 ? '' : 's'} held off today: no network (asleep). Normal.`);
 
     // Say when one is happening NOW.
     //

@@ -285,6 +285,79 @@ the thing that would actually hold the postings.
 time as though it were evidence of running is what hid this for eight days; it says when the last
 collection actually happened and shouts if that was two or more days ago.
 
+## The slow runs were never slow, and the collapsed runs were the same bug
+
+Three runs were recorded at 46, 79 and 87 minutes against a normal two. There was no slow source.
+The 87-minute run started at **08:01:20 inside an 11-second DarkWake**, the Mac went back to sleep
+at 08:01:31, and it finished at 09:28 — one minute after the lid was opened. Ninety seconds of
+work and 87 minutes of clock. `huntSecs` was wall time across a sleeping laptop, which is not a
+measurement of anything, and it sent me looking for a performance problem that did not exist.
+
+The same window explains the collapsed runs. In Standby the hourly maintenance DarkWakes last
+**7 to 9 seconds** and the power log says `TCPKeepAlive=inactive`: the process is scheduled, and
+there is no network. So:
+
+| run | seen | errors | what it actually was |
+|---|---|---|---|
+| 2026-11-02 | 0 | 71 | every source `fetch failed` — DarkWake, no network |
+| 2026-11-04 | 1,921 | 43 | same, and it retired 256 postings |
+| 2026-11-07 | 6,651 | 29 | same, and it retired **535** |
+| 2026-11-10 | 1,344 | 44 | same, reported as a 79-minute run |
+
+Four fixes, and the order matters:
+
+- **`daily.mjs` opens a TCP socket to two boards before it starts.** No network, no crawl: it logs
+  `daily_skipped` and exits 0 so the next tick retries. A connect, not a fetch, because undici
+  reads proxy settings out of the environment — the same trap as the health probe.
+- **`hunt.mjs` judges its own run.** Under 40% of the postings already held, or over a fifth of the
+  company boards failing, and it prints why, retires nothing, and **exits 2**.
+- **`ranToday()` only counts a healthy run.** This was a regression I introduced with the once-a-day
+  guard itself: a DarkWake run finishes in a minute having seen nothing, logged `daily_run`, and
+  satisfied the day's quota, so the real collection would never have happened. A run that did not
+  see the boards does not count as having looked.
+- **The run reports work, not clock.** A 15-second heartbeat that does not fire for fifty minutes is
+  the whole measurement of a sleeping laptop; no special clock is needed. It is also why daily.mjs
+  waits on its children asynchronously instead of using `spawnSync`, which blocks the event loop and
+  the timer with it. `caffeinate -i -m -w <pid>` holds an idle machine awake for the duration, and
+  cannot beat a closed lid — clamshell sleep ignores every assertion.
+
+## Absence is only evidence from a board that answered
+
+The worst of it was retirement. `retireMissing` took the source — `greenhouse` — and the set of
+posting ids seen anywhere under it. Greenhouse is forty company boards. On 2026-11-06 eleven of
+them threw while the rest answered, so the aggregate cleared the 50% guard comfortably, and every
+posting at those eleven companies was marked missing. The same eleven failed again the next
+morning and all of it was closed:
+
+```
+152  Affirm      148  Anthropic    70  Coinbase    60  Cloudflare
+ 39  Elastic      23  Databricks   15  Discord     10  Duolingo   ...  535 total
+```
+
+Every company on that list is in the error log for both runs. Not one of those jobs had closed.
+
+A board that answered has told you everything about its own company and nothing about anyone
+else's; a board that threw has told you nothing at all. So the unit of judgement is **one company
+board**, which is why `source_id` carries the slug (`greenhouse:affirm:8197891`). `retireMissing`
+now takes the set of slugs that answered and reports how many postings it left alone for that
+reason. Verified against a copy of the real database: given one answering board, it judged that
+board's 92 postings and did not touch the other 709.
+
+A per-source guard looked like it was protecting this. It was aggregating across forty boards and
+could not see the eleven holes.
+
+And closing used to be a one-way door. `retireMissing` read `WHERE status != 'closed'`, so a
+posting retired in error could never come back even while its own board went on advertising it:
+nineteen days after the bad sweep the Affirm board still listed **84** of the jobs it had killed,
+every crawl saw all 84, and every crawl left them closed. The board is the authority on its own
+postings in both directions, so a closed row that reappears is now reopened. The corrective sweep
+brought back **1,207** postings.
+
+**Only 4 match and 4 stretch of those 1,207 were in the tiers he acts on**, all of them Supabase.
+That is a real gain, because Supabase is one of only two boards that ever produces a match - but
+it is a much smaller number than 1,207, and the big one is not the interesting one. Measure which
+tier a recovery lands in before reporting it as a win.
+
 # The dashboard needs to be findable, not just running
 
 It lived at 127.0.0.1:4321 with no icon, no Spotlight entry and no Dock presence, so the owner had
@@ -431,9 +504,11 @@ open. `tierOf()` in `src/jobs/eligibility.mjs` keeps the same judgement in front
 | `regional` | Right kind of job, needs him in a specific country. |
 | `no` | Not full-time, not his field, or a dealbreaker. |
 
-Current, under strict `global-only`: **4 match, 48 stretch, 4,032 regional, 497 no.** That is not a
-broken filter — genuinely worldwide, full-time, junior-level roles are rare. Say so rather than
-loosening the filter behind his back.
+Measured 2026-11-26 under strict `global-only`, over 15,192 postings: **101 match, 96 stretch,
+11,707 regional, 1,666 no.** The earlier figure in these notes was 4 match over 12,192 postings,
+measured 2026-10-17, and the difference is five weeks of collection rather than any change to the
+filter — worth knowing before concluding either number is wrong. Worldwide junior roles are still
+scarce per run; they accumulate. Say that rather than loosening the filter behind his back.
 
 # The company board list cannot find work-from-anywhere roles
 

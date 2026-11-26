@@ -389,7 +389,9 @@
       "name": "Browserbase",
       "tier": "funded-startup",
       "globalHiring": "unknown",
-      "notes": ""
+      "notes": "",
+      "disabled": true,
+      "note": "Ashby board answers 404 \u2014 verified dead 2026-11-26 after 17 logged errors."
     },
     {
       "slug": "cabify",

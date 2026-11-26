@@ -147,6 +147,9 @@ async function main() {
   const tally = { seen: 0, offRole: 0, stored: 0, dup: 0, yes: 0, unclear: 0, no: 0, errors: 0 };
   const byTrack = {};
   const matches = [];
+  // Set only on a full, unfiltered, writing run: `--source=himalayas` legitimately sees 800
+  // postings and is not a collapse. Judged below, once both phases have reported.
+  let collapsed = false;
 
   const handle = (jobs, sourceLabel) => {
     for (const job of jobs) {
@@ -190,7 +193,8 @@ async function main() {
     if (sourceLabel) {
       const zero = jobs.length === 0;
       if (zero) { tally.emptySources = (tally.emptySources || 0) + 1; logEvent('hunt_empty_source', sourceLabel); }
-      console.log(`  ${sourceLabel.padEnd(12)} ${String(jobs.length).padStart(5)} returned${zero ? '   <-- NOTHING. Blocked, rate-limited, or the API moved.' : ''}`);
+        const secs = timings[sourceLabel] != null ? `  ${String(timings[sourceLabel]).padStart(6)}s` : '';
+      console.log(`  ${sourceLabel.padEnd(12)} ${String(jobs.length).padStart(5)} returned${secs}${zero ? '   <-- NOTHING. Blocked, rate-limited, or the API moved.' : ''}`);
     }
   };
 
@@ -200,9 +204,20 @@ async function main() {
   // The WRITES stay strictly sequential. handle() upserts and sets verdicts, and SQLite here is a
   // single synchronous connection - overlapping that would serialise anyway, or deadlock trying.
   // Only the waiting overlaps, which is the part that was taking an hour.
+  // Per-source timing, recorded as well as printed.
+  //
+  // Three runs took 46, 79 and 87 minutes and I had no way to say where the time went, because
+  // nothing timed anything. They turned out not to be slow at all - the laptop was asleep for 85
+  // of those 87 minutes - but finding that out took a power log, and it should have taken a glance
+  // at the run's own numbers. A crawler that cannot say which source was slow cannot be tuned.
+  const timings = {};
+  const timed = async (name, fn) => {
+    const t0 = Date.now();
+    try { return await fn(); } finally { timings[name] = Math.round((Date.now() - t0) / 100) / 10; }
+  };
+
   const started = globalNames.map((name) =>
-    import(GLOBAL[name])
-      .then((mod) => mod.collect(cfg, {}))
+    timed(name, () => import(GLOBAL[name]).then((mod) => mod.collect(cfg, {})))
       .then((jobs) => ({ name, jobs }), (error) => ({ name, error })));
 
   // Say that the wait is expected.
@@ -230,6 +245,8 @@ async function main() {
     // its jobs are gone - it is evidence of nothing - so it is kept out of the retirement pass.
     const ok = new Set();
     const seenBySource = {};
+    // Which individual boards answered. Per ATS is not good enough - see retireMissing().
+    const answeredSlugs = {};
     // Four, not six.
     //
     // Six was fine when the company sweep was the only thing making requests. With eight global
@@ -237,16 +254,25 @@ async function main() {
     // full run produced twelve "fetch failed" errors against Greenhouse boards that answer 200
     // perfectly well on their own. Running greenhouse alone: errors 0, 6,901 postings. The boards
     // were never the problem; the number of sockets was.
+    const boardsT0 = Date.now();
     await pool(targets, 4, async (c) => {
       try {
         const mod = await import(COMPANY[c.ats]);
         const got = await mod.collect(cfg, { slug: c.slug, company: c });
         collected.push(...got);
         ok.add(c.ats);
+        (answeredSlugs[c.ats] ||= new Set()).add(c.slug);
         (seenBySource[c.ats] ||= new Set());
         for (const j of got) seenBySource[c.ats].add(j.source_id);
-      } catch (e) { tally.errors++; logEvent('hunt_error', `${c.ats}:${c.slug} ${e.message}`); }
+      } catch (e) {
+        tally.errors++;
+        tally.boardsFailed = (tally.boardsFailed || 0) + 1;
+        logEvent('hunt_error', `${c.ats}:${c.slug} ${e.message}`);
+      }
     });
+    timings['company boards'] = Math.round((Date.now() - boardsT0) / 100) / 10;
+    tally.boardsPolled = targets.length;
+    tally.boardsAnswered = targets.length - (tally.boardsFailed || 0);
     handle(collected, 'company boards');
 
     // Retire what the boards no longer list.
@@ -258,8 +284,33 @@ async function main() {
     // against the raw list would silently disable retirement forever the moment one board is retired.
     const fullSweep = !onlySource && !onlyCompany && !onlyTrack && !dryRun
       && targets.length === live.length;
-    if (fullSweep) {
-      const retired = { seen: 0, missing: 0, closed: 0 };
+
+    // A run has to be healthy before its silence means anything.
+    //
+    // On 2026-11-07 twenty-nine of seventy boards threw, the run saw 6,651 postings against the
+    // ~13,000 held, and it closed 535 live jobs that a previous half-broken run had marked
+    // missing. Nothing errored loudly enough to stop it. Both of those runs started inside a
+    // macOS DarkWake maintenance window, where the process is scheduled but the network is not
+    // up, so "the board did not answer" meant "this machine had no network".
+    //
+    // Two tests, both measured against real history: a run that saw under 40% of what is already
+    // held, or one where over a fifth of the company boards failed, has not looked properly.
+    const held = db().prepare("SELECT COUNT(*) n FROM jobs WHERE status != 'closed'").get().n;
+    const sawShare = held ? tally.seen / held : 1;
+    const boardFailShare = tally.boardsPolled ? (tally.boardsFailed || 0) / tally.boardsPolled : 0;
+    collapsed = fullSweep && (sawShare < 0.40 || boardFailShare > 0.20);
+    tally.sawShare = Math.round(sawShare * 100) / 100;
+    tally.collapsed = collapsed;
+
+    if (collapsed) {
+      console.log('');
+      console.log(`  THIS RUN DID NOT SEE THE BOARDS PROPERLY.`);
+      console.log(`    saw ${tally.seen} postings against ${held} already held (${Math.round(sawShare * 100)}%)`);
+      console.log(`    ${tally.boardsFailed || 0} of ${tally.boardsPolled} company boards failed`);
+      console.log(`    Nothing retired, and this does not count as today's collection.`);
+      console.log(`    Usual cause: the machine was in a DarkWake maintenance window with no network.`);
+    } else if (fullSweep) {
+      const retired = { seen: 0, missing: 0, closed: 0, skipped: 0, reopened: 0 };
       for (const ats of ok) {
         // Only boards that return their COMPLETE listing. A search slice tells you nothing by omission.
         if (!['greenhouse', 'lever', 'ashby'].includes(ats)) continue;
@@ -269,19 +320,28 @@ async function main() {
         // absence proves nothing about jobs it never looked at. Workable answering 429 dropped a
         // run from 16,283 postings to 12,003 without raising a single error; the same collapse on
         // a company board would have retired thousands of live jobs on the next run.
-        const held = db().prepare("SELECT COUNT(*) n FROM jobs WHERE source = ? AND status != 'closed'").get(ats).n;
-        if (held && seenBySource[ats].size < held * 0.5) {
-          console.log(`  ${ats}: saw ${seenBySource[ats].size} of ${held} known postings — too few to retire anything, skipping.`);
+        const heldHere = db().prepare("SELECT COUNT(*) n FROM jobs WHERE source = ? AND status != 'closed'").get(ats).n;
+        if (heldHere && seenBySource[ats].size < heldHere * 0.5) {
+          console.log(`  ${ats}: saw ${seenBySource[ats].size} of ${heldHere} known postings — too few to retire anything, skipping.`);
           continue;
         }
-        const r = retireMissing(ats, seenBySource[ats]);
+        const r = retireMissing(ats, seenBySource[ats], answeredSlugs[ats]);
         retired.seen += r.seen; retired.missing += r.missing; retired.closed += r.closed;
+        retired.skipped += r.skipped; retired.reopened += r.reopened;
       }
       tally.closed = retired.closed;
       tally.missingOnce = retired.missing;
+      tally.heldBySilentBoards = retired.skipped;
       if (retired.closed || retired.missing) {
         console.log(`\n  gone from their boards: ${retired.closed} closed, ${retired.missing} missing once (closed on the next miss)`);
       }
+      if (retired.skipped) {
+        console.log(`  ${retired.skipped} postings left alone: their board did not answer this run, so its silence proves nothing.`);
+      }
+      if (retired.reopened) {
+        console.log(`  ${retired.reopened} postings REOPENED: their board is listing them again, so they were never closed.`);
+      }
+      tally.reopened = retired.reopened;
     }
   }
 
@@ -311,10 +371,16 @@ async function main() {
     // Keep search in step with the crawl. Rebuilding beats triggers here: triggers would fire on
     // each of ~12,000 upserts, and this takes about six seconds against a run that takes thirty.
     try { rebuildSearchIndex(); } catch (e) { console.log(`  search index: ${e.message}`); }
-    logEvent('hunt_run', { ...tally, byTrack });
+    logEvent('hunt_run', { ...tally, secs: timings, byTrack });
     console.log(`\nNext: node src/jobs/report.mjs           what is worth your time`);
     console.log(`      node src/jobs/report.mjs --near-miss  what the filter threw away, and why`);
   }
+
+  // A collapsed run is a failure even though every line above printed normally, and it has to say
+  // so in its exit code. daily.mjs uses that to decide whether today's collection has happened:
+  // without it, one broken DarkWake run at 07:00 satisfies the once-a-day rule and the real
+  // collection never happens at all.
+  if (collapsed) process.exitCode = 2;
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

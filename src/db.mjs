@@ -578,19 +578,58 @@ export function ftsQuery(raw) {
  * Two strikes, not one. Boards have bad mornings, and a single empty response should not retire a
  * company's entire board.
  */
-export function retireMissing(source, seenSourceIds) {
+/**
+ * Close postings that have vanished from the boards that actually answered.
+ *
+ * `answeredSlugs` is not optional politeness - it is the whole correctness of this function.
+ *
+ * It used to take only the source ("greenhouse") and the set of posting ids seen anywhere under
+ * it. Greenhouse is forty company boards, and on 2026-11-06 eleven of them threw while the rest
+ * answered normally. The aggregate still looked healthy - well over half the held postings were
+ * seen - so the guard passed, and every posting at those eleven companies was marked missing. The
+ * same eleven boards failed again the next morning and all of it was closed: 152 live jobs at
+ * Affirm, 148 at Anthropic, 70 at Coinbase, 60 at Cloudflare, 535 in total, every single one of
+ * them still open and still advertised.
+ *
+ * A board that answered has told us everything about its own company and nothing about anyone
+ * else's. A board that threw has told us nothing at all. So the unit of judgement is one company
+ * board, and `source_id` carries the slug (`greenhouse:affirm:8197891`) precisely so this can be
+ * scoped to the boards that spoke.
+ */
+export function retireMissing(source, seenSourceIds, answeredSlugs = null) {
   const d = db();
-  const rows = d.prepare("SELECT id, source_id, missing_runs FROM jobs WHERE source = ? AND status != 'closed'").all(source);
+  // Closed rows are IN this query, not filtered out of it. Closing used to be a one-way door: the
+  // query said `status != 'closed'`, so a posting wrongly retired could never come back even while
+  // its own board went on advertising it. Measured on the 535 that the per-source bug killed: the
+  // Affirm board was still listing 84 of them nineteen days later, every crawl saw all 84, and
+  // every crawl left them closed. The board is the authority on its own postings in both
+  // directions - if it is listing the job, the job is open.
+  const rows = d.prepare('SELECT id, source_id, missing_runs, status, eligibility FROM jobs WHERE source = ?').all(source);
   const back = d.prepare('UPDATE jobs SET missing_runs = 0, updated_at = ? WHERE id = ?');
   const miss = d.prepare('UPDATE jobs SET missing_runs = missing_runs + 1, updated_at = ? WHERE id = ?');
   const shut = d.prepare("UPDATE jobs SET status = 'closed', hidden = 1, missing_runs = missing_runs + 1, updated_at = ? WHERE id = ?");
+  // `hidden` is also the owner's dismiss flag, so un-hiding has to be narrow. It is safe here
+  // because `status = 'closed'` is written by exactly one statement in this codebase - the one
+  // above - while a dismissal sets hidden and leaves status alone.
+  const open = d.prepare('UPDATE jobs SET status = ?, hidden = 0, missing_runs = 0, updated_at = ? WHERE id = ?');
   const t = now();
-  let closed = 0, missing = 0, seen = 0;
+  let closed = 0, missing = 0, seen = 0, skipped = 0, reopened = 0;
   for (const r of rows) {
-    if (seenSourceIds.has(r.source_id)) { if (r.missing_runs) back.run(t, r.id); seen++; continue; }
+    if (seenSourceIds.has(r.source_id)) {
+      if (r.status === 'closed') { open.run(r.eligibility === 'no' ? 'rejected' : 'screened', t, r.id); reopened++; }
+      else if (r.missing_runs) back.run(t, r.id);
+      seen++;
+      continue;
+    }
+    if (r.status === 'closed') continue;              // already retired and still absent: nothing to do
+    // Absence is only evidence if the board that holds this posting actually answered.
+    if (answeredSlugs) {
+      const slug = String(r.source_id).split(':')[1];
+      if (!answeredSlugs.has(slug)) { skipped++; continue; }
+    }
     if (r.missing_runs >= 1) { shut.run(t, r.id); closed++; } else { miss.run(t, r.id); missing++; }
   }
-  return { seen, missing, closed };
+  return { seen, missing, closed, skipped, reopened };
 }
 
 /**
