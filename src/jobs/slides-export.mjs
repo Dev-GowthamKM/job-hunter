@@ -11,7 +11,7 @@
 //
 //   node src/jobs/slides-export.mjs --job=42 --format=pdf
 //   node src/jobs/slides-export.mjs --job=42 --format=pptx
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { deflateRawSync, crc32 } from 'node:zlib';
@@ -45,14 +45,31 @@ export function toPdf(jobId) {
   if (!CHROME) throw new Error('No Chrome found; cannot render a PDF.');
   const src = join(deckDir(jobId), 'slides.html');
   const out = join(deckDir(jobId), 'slides.pdf');
-  execFileSync(CHROME, [
-    '--headless', '--disable-gpu', '--no-sandbox',
-    '--no-pdf-header-footer',
-    '--virtual-time-budget=3000',        // let the webfonts arrive before printing
-    `--print-to-pdf=${out}`,
-    `file://${src}`,
-  ], { stdio: 'ignore', timeout: 90000 });
-  if (!existsSync(out)) throw new Error('Chrome produced no PDF.');
+
+  // Same trap as renderPdf in render.mjs: headless Chrome writes the PDF and then sometimes fails
+  // its own teardown ("Teardown watchdog expired"), exiting non-zero. execFileSync throws, the
+  // caller prints "skipped", and a 410KB finished deck sits on disk next to the message saying it
+  // was not built. The file is the evidence; the exit code is an opinion.
+  if (existsSync(out)) rmSync(out, { force: true });
+
+  let err = null;
+  try {
+    execFileSync(CHROME, [
+      '--headless', '--disable-gpu', '--no-sandbox',
+      '--no-pdf-header-footer',
+      '--virtual-time-budget=3000',        // let the webfonts arrive before printing
+      `--print-to-pdf=${out}`,
+      `file://${src}`,
+    ], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 90000 });
+  } catch (e) { err = e; }
+
+  const ok = existsSync(out) && statSync(out).size > 1000
+    && readFileSync(out).subarray(0, 5).toString('latin1') === '%PDF-';
+  if (!ok) {
+    const why = (err?.stderr?.toString() || '').trim().split('\n').filter(Boolean).slice(-2).join(' | ');
+    throw new Error(`Chrome produced no usable deck PDF${why ? ` — Chrome said: ${why}` : ''}`);
+  }
+  if (err) console.log(`      Chrome rendered the deck and then died on exit. Keeping the PDF.`);
   return out;
 }
 

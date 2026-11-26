@@ -3,7 +3,7 @@
 // machine. No puppeteer, no npm install, no headless browser download.
 //
 //   node src/jobs/render.mjs <resume.json> <out.pdf>
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { ROOT } from '../db.mjs';
@@ -114,22 +114,59 @@ export function renderPdf(resumeJsonPath, outPdf) {
   //
   // The retry is separate: a burst of launches makes macOS refuse the spawn outright, which killed
   // a 57-packet rebuild on its second packet. One pause and another try clears it.
+  // stderr is captured, not discarded. It used to be `stdio: 'ignore'` and the thrown message was
+  // sliced to 80 characters, so a failure read as "Command failed: /Applications/Google Chrome.app
+  // /Contents/MacOS/Google Chrome --h" and nothing else. Diagnosing it meant running Chrome by
+  // hand to find out it worked fine. Keep the reason.
   const launch = () => execFileSync(CHROME, [
     '--headless', '--disable-gpu', '--no-sandbox',
     '--no-pdf-header-footer',
     '--print-to-pdf-no-header',
     `--print-to-pdf=${outPdf}`,
     `file://${htmlPath}`,
-  ], { stdio: 'ignore', timeout: 90000 });
+  ], { stdio: ['ignore', 'ignore', 'pipe'], timeout: 90000 });
 
-  try {
-    launch();
-  } catch (first) {
-    execFileSync('/bin/sleep', ['2']);
-    try { launch(); } catch { throw new Error(`Chrome failed twice rendering ${outPdf}: ${first.message.slice(0, 80)}`); }
+  // Three attempts, backing off, because the thing that fails here is the SPAWN and not the render.
+  //
+  // One pause was not enough. Building five packets in a row is fifteen Chrome cold starts - a
+  // resume and two deck exports each - and on a loaded machine macOS starts refusing them. Two of
+  // the five died, and the same page then rendered by hand in 12.9 seconds. A failure here is
+  // almost never the document.
+  // The PDF on disk is the evidence. Chrome's exit code is a claim about it, and the two disagree.
+  //
+  // Headless Chrome renders the file, writes it, prints "197249 bytes written to file ..." and
+  // then sometimes fails to shut down: "Teardown watchdog expired; recording dump and
+  // terminating", and a non-zero exit. execFileSync throws on that, so a finished resume was
+  // discarded and re-rendered three times, each attempt succeeding and each one thrown away. The
+  // packet reported a hard failure while a perfectly good PDF sat next to the error.
+  //
+  // So the stale file goes first - otherwise a previous render would be read as this one's success
+  // - and afterwards the question is whether a valid PDF is there, not how Chrome felt about it.
+  if (existsSync(outPdf)) rmSync(outPdf, { force: true });
+
+  const wrotePdf = () => existsSync(outPdf)
+    && statSync(outPdf).size > 1000
+    && readFileSync(outPdf).subarray(0, 5).toString('latin1') === '%PDF-';
+
+  let lastErr = null;
+  for (let i = 0; i < 3; i++) {
+    try { launch(); } catch (e) { lastErr = e; }
+    if (wrotePdf()) {
+      if (lastErr) console.log(`    Chrome rendered the PDF and then died on exit. Keeping the PDF.`);
+      else if (i) console.log(`    Chrome needed ${i + 1} attempts.`);
+      lastErr = null;
+      break;
+    }
+    if (i < 2) execFileSync('/bin/sleep', [String(2 + i * 4)]);
   }
 
-  if (!existsSync(outPdf)) throw new Error('Chrome produced no PDF.');
+  if (!wrotePdf()) {
+    const why = (lastErr?.stderr?.toString() || '').trim().split('\n').filter(Boolean).slice(-3).join(' | ');
+    throw new Error(`Chrome produced no usable PDF for ${outPdf} in three attempts.\n`
+      + (lastErr ? `  ${lastErr.message.split('\n')[0]}\n` : '')
+      + (why ? `  Chrome said: ${why}\n` : '')
+      + `  It is usually the spawn, not the page. Try again, or render fewer packets at once.`);
+  }
 
   // One page is the brief. A PDF has one /Type /Page object per page, so counting them is enough to
   // catch a tailored resume that quietly grew to two.

@@ -371,6 +371,32 @@ Verified from a fully stopped state: 9 seconds.
 `http://jobhunter.localhost:4321` also works, with no hosts-file change - browsers resolve any
 `*.localhost` name to 127.0.0.1.
 
+# Chrome's exit code is not the question; the PDF on disk is
+
+Two of five packets failed with `Chrome failed twice rendering ...`. The same page then rendered by
+hand in 12.9 seconds. Chrome's own stderr, which `stdio: 'ignore'` was throwing away and an 80-
+character slice was truncating, said what had actually happened:
+
+```
+197249 bytes written to file .../Camunda_Gowtham_K_M.pdf
+Teardown watchdog expired; recording dump and terminating.
+```
+
+**It rendered the PDF, wrote it, and then failed to shut down**, exiting non-zero. `execFileSync`
+throws on that, so a finished resume was discarded and re-rendered three times, each attempt
+succeeding and each one thrown away. The deck exporter had the identical bug one layer along and
+printed `skipped` over a 410KB finished deck.
+
+Both now delete the stale file, run Chrome, and ask whether a valid PDF is there - size over 1KB
+and a `%PDF-` magic number - rather than how Chrome felt about exiting. Deleting first is not
+optional: without it a previous render reads as this one's success.
+
+The retry is three attempts backing off 2s then 6s, not one at 2s. Five packets is fifteen Chrome
+cold starts, and on a loaded machine macOS starts refusing the spawn outright.
+
+This is the same rule as `messages.delivery` in the client arm. A process saying it worked is a
+claim. The artifact is the evidence.
+
 # One click builds the whole packet
 
 `apply.mjs full --job=N` runs init, render with the PDF, and both deck exports as ONE process, so
